@@ -27,4 +27,4 @@ RUN echo "<VirtualHost *:80>\n\
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 EXPOSE 80
-CMD ["apache2-foreground"]
+CMD cp /etc/secrets/.env /var/www/html/.env && apache2-foreground
