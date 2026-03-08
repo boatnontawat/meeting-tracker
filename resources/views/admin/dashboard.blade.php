@@ -4,7 +4,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    /* ตกแต่ง Card ให้ดูทันสมัยขึ้น */
     .stat-card {
         border-radius: 1rem;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -34,16 +33,16 @@
 
 <div class="container-fluid px-3 px-md-4 py-4">
     
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
-        <div>
-            <h2 class="fw-bold text-dark mb-1">📊 ภาพรวมระบบ (Dashboard)</h2>
-            <p class="text-muted mb-0">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+        <div class="w-100">
+            <h2 class="fw-bold text-dark mb-2">📊 ภาพรวมระบบ (Dashboard)</h2>
+            <p class="text-muted mb-0 small">
                 <i class="bi bi-funnel-fill text-primary"></i> ข้อมูลที่แสดงผลอยู่ในช่วง: 
-                <span class="badge bg-primary rounded-pill px-3 fs-6 shadow-sm">
+                <span class="badge bg-primary rounded-pill px-3 fs-6 shadow-sm d-inline-block mt-1 mt-sm-0">
                     {{ \App\Models\Setting::where('key', 'filter_start_month')->value('value') ?? 'N/A' }}
                 </span>
-                <i class="bi bi-arrow-right text-muted mx-1"></i>
-                <span class="badge bg-primary rounded-pill px-3 fs-6 shadow-sm">
+                <i class="bi bi-arrow-right text-muted mx-1 d-none d-sm-inline"></i>
+                <span class="badge bg-primary rounded-pill px-3 fs-6 shadow-sm d-inline-block mt-1 mt-sm-0">
                     {{ \App\Models\Setting::where('key', 'filter_end_month')->value('value') ?? 'N/A' }}
                 </span>
             </p>
@@ -51,7 +50,7 @@
     </div>
 
     <div class="row g-4 mb-4">
-        <div class="col-xl-4 col-md-6">
+        <div class="col-12 col-md-6 col-xl-4">
             <div class="card stat-card bg-primary text-white border-0 shadow-sm h-100 position-relative">
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center position-relative z-1">
@@ -68,7 +67,7 @@
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6">
+        <div class="col-12 col-md-6 col-xl-4">
             <div class="card stat-card bg-success text-white border-0 shadow-sm h-100 position-relative">
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center position-relative z-1">
@@ -85,7 +84,7 @@
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-12">
+        <div class="col-12 col-md-12 col-xl-4">
             <div class="card stat-card bg-warning text-dark border-0 shadow-sm h-100 position-relative">
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center position-relative z-1">
@@ -104,26 +103,26 @@
     </div>
 
     <div class="row g-4">
-        <div class="col-xl-8 col-lg-7">
+        <div class="col-12 col-xl-8 col-lg-7">
             <div class="card border-0 shadow-sm h-100" style="border-radius: 1rem;">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
                     <h5 class="fw-bold text-dark mb-0"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i> ชั่วโมงการประชุมรายเดือน</h5>
                 </div>
                 <div class="card-body p-4">
-                    <div style="height: 150px;"> 
+                    <div style="position: relative; height: 300px; width: 100%;"> 
                         <canvas id="barChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-4 col-lg-5">
+        <div class="col-12 col-xl-4 col-lg-5">
             <div class="card border-0 shadow-sm h-100" style="border-radius: 1rem;">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
                     <h5 class="fw-bold text-dark mb-0"><i class="bi bi-pie-chart-fill text-success me-2"></i> สัดส่วนประเภทการประชุม</h5>
                 </div>
                 <div class="card-body p-4 d-flex justify-content-center align-items-center">
-                    <div style="height: 150px; width: 100%;">
+                    <div style="position: relative; height: 300px; width: 100%;">
                         <canvas id="doughnutChart"></canvas>
                     </div>
                 </div>
@@ -135,18 +134,15 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        
-        // 1. ตั้งค่ากราฟแท่ง (Bar Chart)
-        const barDataRaw = {!! json_encode($chartData) !!};
+        // ... (โค้ด JS กราฟเหมือนเดิมของคุณเลยครับ เพราะเขียน MaintainAspectRatio: false ไว้ดีแล้ว) ...
+        const barDataRaw = {!! json_encode($chartData ?? []) !!};
         const barLabels = barDataRaw.map(item => item.month_year);
         const barValues = barDataRaw.map(item => item.sum_hours);
 
         const ctxBar = document.getElementById('barChart').getContext('2d');
-        
-        // สร้าง Gradient สีน้ำเงินให้กราฟแท่ง
         let gradientBlue = ctxBar.createLinearGradient(0, 0, 0, 400);
-        gradientBlue.addColorStop(0, 'rgba(13, 110, 253, 0.8)'); // สีน้ำเงินเข้ม
-        gradientBlue.addColorStop(1, 'rgba(13, 110, 253, 0.2)'); // สีน้ำเงินอ่อน
+        gradientBlue.addColorStop(0, 'rgba(13, 110, 253, 0.8)');
+        gradientBlue.addColorStop(1, 'rgba(13, 110, 253, 0.2)');
 
         new Chart(ctxBar, {
             type: 'bar',
@@ -158,7 +154,7 @@
                     backgroundColor: gradientBlue,
                     borderColor: '#0d6efd',
                     borderWidth: 1,
-                    borderRadius: 6, // ขอบกราฟมน
+                    borderRadius: 6,
                     barPercentage: 0.6
                 }]
             },
@@ -166,7 +162,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false }, // ซ่อน Legend เพราะมีแค่แท่งเดียว
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: '#212529',
                         padding: 12,
@@ -176,19 +172,13 @@
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { borderDash: [5, 5], color: '#e9ecef' }
-                    },
-                    x: {
-                        grid: { display: false }
-                    }
+                    y: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e9ecef' } },
+                    x: { grid: { display: false } }
                 }
             }
         });
 
-        // 2. ตั้งค่ากราฟโดนัท (Doughnut Chart)
-        const typeDataRaw = {!! json_encode($typeData) !!};
+        const typeDataRaw = {!! json_encode($typeData ?? []) !!};
         const typeLabels = typeDataRaw.map(item => item.meeting_type);
         const typeValues = typeDataRaw.map(item => item.count);
 
@@ -199,14 +189,7 @@
                 labels: typeLabels,
                 datasets: [{
                     data: typeValues,
-                    backgroundColor: [
-                        '#198754', // Success (เขียว)
-                        '#ffc107', // Warning (เหลือง)
-                        '#0dcaf0', // Info (ฟ้า)
-                        '#dc3545', // Danger (แดง)
-                        '#6f42c1', // Purple
-                        '#fd7e14'  // Orange
-                    ],
+                    backgroundColor: ['#198754', '#ffc107', '#0dcaf0', '#dc3545', '#6f42c1', '#fd7e14'],
                     borderWidth: 2,
                     hoverOffset: 5
                 }]
@@ -214,16 +197,15 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '70%', // ทำให้รูตรงกลางกว้างขึ้น ดูโมเดิร์น
+                cutout: '70%',
                 plugins: {
                     legend: {
-                        position: 'right', // ย้ายตำแหน่ง Legend หากต้องการให้พอดีขึ้น (เปลี่ยนเป็น 'bottom' ได้ถ้าชอบแบบเดิม)
+                        position: 'bottom', // เปลี่ยนเป็น bottom เพื่อให้บนมือถือแสดงผลได้ดีขึ้น
                         labels: { padding: 15, usePointStyle: true, font: {size: 11} }
                     }
                 }
             }
         });
-
     });
 </script>
 @endsection

@@ -9,33 +9,24 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { 
-            min-height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
             background-color: #f8f9fa; 
-            overflow-x: hidden; /* ป้องกันแถบเลื่อนแนวนอนตอนเมนูสไลด์ */
+            overflow-x: hidden; 
         }
         
         .wrapper { 
             display: flex; 
             width: 100%; 
-            align-items: stretch; 
+            min-height: 100vh;
         }
 
-        /* 🎨 สไตล์ Sidebar ใหม่ */
+        /* 🎨 สไตล์ Sidebar */
         .sidebar { 
-            min-width: 250px; 
-            max-width: 250px; 
+            width: 250px; 
             min-height: 100vh; 
             background-color: #212529; 
             color: white; 
             transition: all 0.3s ease-in-out; 
-            z-index: 1000;
-        }
-        
-        /* คลาสสำหรับซ่อน Sidebar */
-        .sidebar.hidden {
-            margin-left: -250px;
+            z-index: 1040;
         }
 
         .sidebar a { color: #adb5bd; text-decoration: none; padding: 10px 15px; display: block; border-radius: 5px; margin-bottom: 5px; transition: 0.2s;}
@@ -48,22 +39,65 @@
         .main-content { 
             flex-grow: 1; 
             padding: 20px; 
+            width: calc(100% - 250px);
             transition: all 0.3s ease-in-out; 
-            width: 100%;
         }
 
-        /* สำหรับมือถือ */
-        @media (max-width: 768px) {
-            .sidebar { position: absolute; height: 100%; box-shadow: 4px 0 10px rgba(0,0,0,0.2); }
+        /* ฉากหลังตอนเปิดเมนูบนมือถือ */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1030;
+            backdrop-filter: blur(2px);
+        }
+
+        /* สำหรับหน้าจอคอมพิวเตอร์และแท็บเล็ตแนวนอน */
+        @media (min-width: 768px) {
+            .sidebar.hidden { margin-left: -250px; }
+            .main-content { width: 100%; }
+        }
+
+        /* สำหรับมือถือและแท็บเล็ตแนวตั้ง */
+        @media (max-width: 767.98px) {
+            .sidebar { 
+                position: fixed; 
+                height: 100vh; 
+                left: 0;
+                top: 0;
+                transform: translateX(0); /* สไลด์เข้า */
+                box-shadow: 4px 0 10px rgba(0,0,0,0.2); 
+            }
+            .sidebar.hidden {
+                transform: translateX(-100%); /* สไลด์ออก */
+                margin-left: 0; 
+            }
+            .main-content { 
+                width: 100%; 
+                margin-left: 0 !important;
+            }
+            .sidebar-overlay.active {
+                display: block; /* แสดงฉากหลัง */
+            }
+            .header-toggle-container {
+                padding: 15px !important;
+            }
         }
     </style>
 </head>
 <body>
     <div class="wrapper">
+        
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
         <div class="sidebar p-3" id="sidebar">
             <div class="d-flex justify-content-between align-items-center mb-4 mt-2">
-                <h4 class="text-white mb-0"><i class="bi bi-shield-lock"></i> Admin Panel</h4>
-                <button class="btn-lock" id="lockBtn" title="ปักหมุดเมนู">
+                <h4 class="text-white mb-0 fs-5"><i class="bi bi-shield-lock me-1"></i> Admin Panel</h4>
+                <button class="btn-lock d-none d-md-block" id="lockBtn" title="ปักหมุดเมนู">
                     <i class="bi bi-pin-angle"></i>
                 </button>
             </div>
@@ -80,9 +114,12 @@
         </div>
 
         <div class="main-content">
-            <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 shadow-sm rounded">
-                <button id="toggleBtn" class="btn btn-primary"><i class="bi bi-list fs-5"></i></button>
-                <div class="text-muted fw-bold"><i class="bi bi-person-circle me-1"></i> ผู้ดูแลระบบ</div>
+            <div class="header-toggle-container d-flex justify-content-between align-items-center mb-4 bg-white p-3 shadow-sm rounded">
+                <button id="toggleBtn" class="btn btn-primary shadow-sm"><i class="bi bi-list fs-5"></i></button>
+                <div class="text-muted fw-bold d-flex align-items-center">
+                    <i class="bi bi-person-circle fs-4 me-2 text-primary"></i> 
+                    <span class="d-none d-sm-inline">ผู้ดูแลระบบ</span>
+                </div>
             </div>
 
             @yield('content')
@@ -96,42 +133,73 @@
             const toggleBtn = document.getElementById('toggleBtn');
             const lockBtn = document.getElementById('lockBtn');
             const lockIcon = lockBtn.querySelector('i');
+            const overlay = document.getElementById('sidebarOverlay');
             
-            // ตรวจสอบค่า Lock จาก LocalStorage
             let isLocked = localStorage.getItem('sidebarLocked') === 'true';
 
-            // ฟังก์ชันอัปเดต UI 
-            function updateLockUI() {
-                if (isLocked) {
-                    lockIcon.classList.replace('bi-pin-angle', 'bi-pin-fill');
-                    lockBtn.classList.add('locked');
-                    sidebar.classList.remove('hidden'); // ถ้าล็อคไว้ ห้ามซ่อน
+            function isMobile() {
+                return window.innerWidth < 768;
+            }
+
+            function updateUI() {
+                if (isMobile()) {
+                    // มือถือ: ซ่อนเมนูเสมอตอนเริ่ม และไม่ใช้ระบบล็อค
+                    sidebar.classList.add('hidden');
+                    overlay.classList.remove('active');
                 } else {
-                    lockIcon.classList.replace('bi-pin-fill', 'bi-pin-angle');
-                    lockBtn.classList.remove('locked');
+                    // คอมพิวเตอร์: จัดการตามสถานะล็อค
+                    if (isLocked) {
+                        lockIcon.classList.replace('bi-pin-angle', 'bi-pin-fill');
+                        lockBtn.classList.add('locked');
+                        sidebar.classList.remove('hidden');
+                    } else {
+                        lockIcon.classList.replace('bi-pin-fill', 'bi-pin-angle');
+                        lockBtn.classList.remove('locked');
+                        sidebar.classList.add('hidden');
+                    }
                 }
             }
 
-            // ตั้งค่าสถานะตอนโหลดหน้าเว็บ
-            if (window.innerWidth > 768) {
-                if (!isLocked) {
-                    sidebar.classList.add('hidden'); // ถ้าไม่ได้ล็อค ให้ซ่อนอัตโนมัติเป็นค่าเริ่มต้น
-                }
-            } else {
-                sidebar.classList.add('hidden'); // มือถือให้ซ่อนเสมอตอนเริ่ม
-            }
-            updateLockUI();
+            // ตั้งค่าครั้งแรกตอนโหลดหน้า
+            updateUI();
 
-            // Event กดปุ่ม Hamburger เพื่อแสดง/ซ่อน
+            // กดปุ่ม ☰ (Hamburger Menu)
             toggleBtn.addEventListener('click', function () {
                 sidebar.classList.toggle('hidden');
+                
+                // จัดการ Overlay เฉพาะบนมือถือ
+                if (isMobile()) {
+                    if (sidebar.classList.contains('hidden')) {
+                        overlay.classList.remove('active');
+                    } else {
+                        overlay.classList.add('active');
+                    }
+                }
             });
 
-            // Event กดปุ่ม Lock (ไอคอนเข็มหมุด)
+            // กดที่ฉากหลัง (Overlay) เพื่อปิดเมนูบนมือถือ
+            overlay.addEventListener('click', function () {
+                sidebar.classList.add('hidden');
+                overlay.classList.remove('active');
+            });
+
+            // กดปุ่ม Lock (เข็มหมุด) - มีผลแค่บนคอมพิวเตอร์
             lockBtn.addEventListener('click', function () {
-                isLocked = !isLocked; 
-                localStorage.setItem('sidebarLocked', isLocked); // บันทึกค่าลงเบราว์เซอร์
-                updateLockUI();
+                if (!isMobile()) {
+                    isLocked = !isLocked; 
+                    localStorage.setItem('sidebarLocked', isLocked);
+                    updateUI();
+                }
+            });
+
+            // ปรับ UI อัตโนมัติเวลาหมุนหน้าจอหรือย่อ/ขยายหน้าต่างเบราว์เซอร์
+            window.addEventListener('resize', function() {
+                if (isMobile()) {
+                    sidebar.classList.add('hidden');
+                    overlay.classList.remove('active');
+                } else {
+                    updateUI();
+                }
             });
         });
     </script>
