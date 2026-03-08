@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\MeetingRecord;
+use App\Models\Setting;
 use Illuminate\Http\Request;
-use App\Helpers\GlobalSetting;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -14,26 +15,32 @@ class DashboardController extends Controller
     {
         $totalUsers = User::count();
         
-        $totalMeetings = MeetingRecord::inActivePeriod()->count();
-        $totalHours = MeetingRecord::inActivePeriod()->sum('total_hours');
+        // ดึงการตั้งค่าตรงๆ
+        $startMonth = Setting::where('key', 'filter_start_month')->value('value') ?? date('Y-01');
+        $endMonth = Setting::where('key', 'filter_end_month')->value('value') ?? date('Y-12');
 
-        // 1. ดึงข้อมูลดิบจากฐานข้อมูลมาเป็น Key-Value ก่อน (เช่น ['2026-01' => 15, '2026-02' => 20])
-        $rawChartData = MeetingRecord::inActivePeriod()
+        // สร้าง Base Query บังคับกรองเดือน
+        $baseQuery = MeetingRecord::whereBetween('month_year', [$startMonth, $endMonth]);
+
+        $totalMeetings = (clone $baseQuery)->count();
+        $totalHours = (clone $baseQuery)->sum('total_hours');
+
+        // ข้อมูลกราฟแท่ง
+        $rawChartData = (clone $baseQuery)
             ->selectRaw('month_year, SUM(total_hours) as sum_hours')
             ->groupBy('month_year')
             ->pluck('sum_hours', 'month_year');
 
-        // 2. ดึงช่วงวันที่ตั้งค่าไว้ และสร้างแกน X แบบบังคับ (ไม่เอาข้อมูลขยะ)
-        $filter = GlobalSetting::getDateFilter();
+        // สร้างแกน X จากช่วงเดือนทั้งหมด
         $months = [];
-        $currentMonth = $filter['start']->copy();
+        $currentMonth = Carbon::parse($startMonth)->startOfMonth();
+        $endDate = Carbon::parse($endMonth)->startOfMonth();
         
-        while ($currentMonth->lte($filter['end'])) {
-            $months[] = $currentMonth->format('Y-m'); // จะได้ '2026-01', '2026-02', ...
+        while ($currentMonth->lte($endDate)) {
+            $months[] = $currentMonth->format('Y-m'); 
             $currentMonth->addMonth();
         }
 
-        // 3. เอาข้อมูลดิบมาหยอดลงในเดือนที่ถูกต้อง เดือนไหนไม่มีให้เป็น 0
         $chartData = [];
         foreach ($months as $month) {
             $chartData[] = [
@@ -42,7 +49,8 @@ class DashboardController extends Controller
             ];
         }
 
-        $typeData = MeetingRecord::inActivePeriod()
+        // ข้อมูลกราฟโดนัท (สัดส่วนการประชุม)
+        $typeData = (clone $baseQuery)
             ->selectRaw('meeting_type, COUNT(id) as count')
             ->groupBy('meeting_type')
             ->get();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\MeetingRecord;
 use App\Models\User;
+use App\Models\Setting; // 💡 เพิ่มการเรียกใช้ Model Setting
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -12,11 +13,17 @@ class MeetingController extends Controller
 {
     public function index()
     {
-        $meetings = MeetingRecord::inActivePeriod() // เพิ่มการกรอง
+        // 💡 1. ดึงค่าจากหน้าตั้งค่าระบบ
+        $startMonth = Setting::where('key', 'filter_start_month')->value('value') ?? date('Y-01');
+        $endMonth = Setting::where('key', 'filter_end_month')->value('value') ?? date('Y-12');
+
+        // 💡 2. ใช้ whereBetween บังคับกรองเฉพาะช่วงเดือนที่ตั้งค่าไว้
+        $meetings = MeetingRecord::whereBetween('month_year', [$startMonth, $endMonth])
                 ->with('user')
                 ->orderBy('created_at', 'desc')
                 ->get();
-    return view('admin.meetings.index', compact('meetings'));
+                
+        return view('admin.meetings.index', compact('meetings'));
     }
 
     public function create()

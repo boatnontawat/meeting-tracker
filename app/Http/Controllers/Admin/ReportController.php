@@ -7,27 +7,34 @@ use App\Models\User;
 use App\Models\MeetingRecord;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    // ฟังก์ชันช่วยเหลือสำหรับสร้าง Query ของ User ตาม Filter
+    // 💡 ดึงช่วงเดือนและ KPI จาก Setting ตรงๆ
+    private function getSettings()
+    {
+        return [
+            'start' => Setting::where('key', 'filter_start_month')->value('value') ?? date('Y-01'),
+            'end'   => Setting::where('key', 'filter_end_month')->value('value') ?? date('Y-12'),
+            'kpi'   => (int)(Setting::where('key', 'kpi_hours')->value('value') ?? 60),
+        ];
+    }
+
     private function getFilteredUsersQuery(Request $request)
     {
         $query = User::query();
 
-        // กรองสถานะ ปฏิบัติงาน/ลาออก (ค่าเริ่มต้นคือ ปฏิบัติงาน)
         if ($request->filled('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
         } elseif (!$request->filled('status')) {
             $query->where('status', 'active');
         }
 
-        // กรองหน่วยงาน
         if ($request->filled('department')) {
             $query->where('department', $request->department);
         }
 
-        // กรองตำแหน่ง
         if ($request->filled('position')) {
             $query->where('position', $request->position);
         }
@@ -35,7 +42,6 @@ class ReportController extends Controller
         return $query->orderBy('department');
     }
 
-    // ฟังก์ชันช่วยเหลือสำหรับดึงข้อมูลใส่ Dropdown
     private function getFilterOptions()
     {
         return [
@@ -47,13 +53,14 @@ class ReportController extends Controller
     // 1. รายงานสรุป 10 วัน (รายบุคคล)
     public function index(Request $request)
     {
-        $kpiSetting = Setting::where('key', 'kpi_hours')->first();
-        $targetHours = $kpiSetting ? (int)$kpiSetting->value : 60;
+        $settings = $this->getSettings();
+        $targetHours = $settings['kpi'];
 
         $options = $this->getFilterOptions();
         $users = $this->getFilteredUsersQuery($request)->get();
 
-        $meetingTotals = MeetingRecord::inActivePeriod()
+        // 💡 บังคับกรองเฉพาะช่วงเดือนที่ตั้งค่า
+        $meetingTotals = MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
             ->selectRaw('user_id, SUM(total_hours) as total_hours')
             ->groupBy('user_id')
             ->pluck('total_hours', 'user_id');
@@ -65,7 +72,6 @@ class ReportController extends Controller
             $user->kpi_passed = $hours >= $targetHours; 
         }
 
-        // กรองสถานะ KPI ผ่าน/ไม่ผ่าน
         if ($request->filled('kpi_status')) {
             $users = $users->filter(function ($user) use ($request) {
                 return $request->kpi_status === 'passed' ? $user->kpi_passed : !$user->kpi_passed;
@@ -75,16 +81,17 @@ class ReportController extends Controller
         return view('admin.reports.index', array_merge(compact('users', 'targetHours'), $options));
     }
 
-    // 2. รายงาน Master Summary (สรุปรายแผนกและตำแหน่ง)
+    // 2. รายงาน Master Summary (สรุปรายแผนก)
     public function masterSummary(Request $request)
     {
-        $kpiSetting = Setting::where('key', 'kpi_hours')->first();
-        $targetHours = $kpiSetting ? (int)$kpiSetting->value : 60;
+        $settings = $this->getSettings();
+        $targetHours = $settings['kpi'];
 
         $options = $this->getFilterOptions();
         $users = $this->getFilteredUsersQuery($request)->get();
 
-        $meetingTotals = MeetingRecord::inActivePeriod()
+        // 💡 บังคับกรองเฉพาะช่วงเดือนที่ตั้งค่า
+        $meetingTotals = MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
             ->selectRaw('user_id, SUM(total_hours) as total_hours')
             ->groupBy('user_id')
             ->pluck('total_hours', 'user_id');
@@ -94,7 +101,6 @@ class ReportController extends Controller
             $hours = $meetingTotals[$user->id] ?? 0;
             $passed = $hours >= $targetHours ? 1 : 0;
             
-            // กรองสถานะ KPI ผ่าน/ไม่ผ่าน สำหรับรายงานแผนก
             if ($request->filled('kpi_status')) {
                 if ($request->kpi_status === 'passed' && !$passed) continue;
                 if ($request->kpi_status === 'failed' && $passed) continue;
@@ -119,19 +125,26 @@ class ReportController extends Controller
     // 3. รายงาน Sum Pivot (แยกรายเดือน)
     public function pivotSummary(Request $request)
     {
-        $filter = \App\Helpers\GlobalSetting::getDateFilter();
+        $settings = $this->getSettings();
+        $startMonth = $settings['start'];
+        $endMonth = $settings['end'];
+        $targetHours = $settings['kpi'];
 
-        $months = MeetingRecord::inActivePeriod() 
-                    ->select('month_year')
-                    ->whereNotNull('month_year')
-                    ->distinct()
-                    ->orderBy('month_year', 'asc')
-                    ->pluck('month_year');
+        // 💡 1. สร้างคอลัมน์เดือนจาก Setting เท่านั้น (ป้องกันเดือนเก่าโผล่มา)
+        $months = [];
+        $current = Carbon::parse($startMonth)->startOfMonth();
+        $end = Carbon::parse($endMonth)->startOfMonth();
+
+        while ($current->lte($end)) {
+            $months[] = $current->format('Y-m');
+            $current->addMonth();
+        }
 
         $options = $this->getFilterOptions();
         $users = $this->getFilteredUsersQuery($request)->get();
         
-        $meetingData = MeetingRecord::inActivePeriod()
+        // 💡 2. ดึงชั่วโมงรวม เฉพาะเดือนที่ตั้งค่า
+        $meetingData = MeetingRecord::whereBetween('month_year', [$startMonth, $endMonth])
             ->selectRaw('user_id, month_year, SUM(total_hours) as total')
             ->groupBy('user_id', 'month_year')
             ->get();
@@ -143,9 +156,6 @@ class ReportController extends Controller
             $userTotals[$data->user_id] = ($userTotals[$data->user_id] ?? 0) + $data->total;
         }
 
-        $kpiSetting = Setting::where('key', 'kpi_hours')->first();
-        $targetHours = $kpiSetting ? (int)$kpiSetting->value : 60;
-
         foreach ($users as $user) {
             $user->total_hours = $userTotals[$user->id] ?? 0;
             $temp_monthly_hours = [];
@@ -156,12 +166,14 @@ class ReportController extends Controller
             $user->kpi_passed = $user->total_hours >= $targetHours;
         }
 
-        // กรองสถานะ KPI
         if ($request->filled('kpi_status')) {
             $users = $users->filter(function ($user) use ($request) {
                 return $request->kpi_status === 'passed' ? $user->kpi_passed : !$user->kpi_passed;
             });
         }
+
+        // ส่งตัวแปรเป็น Array ธรรมดาไปที่ View
+        $filter = ['start' => $startMonth, 'end' => $endMonth];
 
         return view('admin.reports.pivot', array_merge(compact('users', 'months', 'filter'), $options));
     }

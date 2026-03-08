@@ -30,7 +30,6 @@ class MeetingController extends Controller
                 'position' => $request->position,
             ]);
         } else {
-          
             $user = User::create([
                 'name' => $request->name,
                 'department' => $request->department,
@@ -41,60 +40,66 @@ class MeetingController extends Controller
             ]);
         }
 
-        $start = Carbon::parse($request->start_time);
-        $end = Carbon::parse($request->end_time);
-        $total_hours = $start->diffInMinutes($end) / 60; 
-
+        // 2. บันทึกข้อมูลการประชุม
         MeetingRecord::create([
-            'user_id' => $user->id,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
-            'total_hours'  => $request->total_hours,
-            'topic' => $request->topic,
+            'user_id'      => $user->id,
+            'start_time'   => $request->start_time,
+            'end_time'     => $request->end_time,
+            'total_hours'  => $request->total_hours, // ใช้ค่าที่ผู้ใช้กรอกมาโดยตรง
+            'topic'        => $request->topic,
             'meeting_type' => $request->meeting_type,
-            'organizer' => $request->organizer,
-            'location' => $request->location,
-            'month_year' => $request->month_year,
+            'organizer'    => $request->organizer,
+            'location'     => $request->location,
+            'month_year'   => $request->month_year,
         ]);
         
         return redirect()->route('form.summary')->with('success', 'บันทึกข้อมูลการประชุมเรียบร้อยแล้ว!');
     }
+
     public function summary(Request $request)
-{
-    // ใช้ inActivePeriod() เพื่อกรองตามช่วงเดือนที่แอดมินตั้งค่าไว้
-    $query = MeetingRecord::inActivePeriod()->with('user');
+    {
+        // 1. ดึงค่าเริ่มต้น-สิ้นสุด จากตาราง settings
+        $startMonth = \App\Models\Setting::where('key', 'filter_start_month')->value('value');
+        $endMonth = \App\Models\Setting::where('key', 'filter_end_month')->value('value');
 
-    // กรองตามหน่วยงาน
-    if ($request->filled('department')) {
-        $query->whereHas('user', function($q) use ($request) {
-            $q->where('department', $request->department);
-        });
+        // 2. ใช้ whereBetween เพื่อบังคับกรองข้อมูลให้อยู่ในเดือนที่แอดมินตั้งค่าไว้เท่านั้น
+        $query = MeetingRecord::with('user');
+        
+        if ($startMonth && $endMonth) {
+            $query->whereBetween('month_year', [$startMonth, $endMonth]);
+        }
+
+        // กรองตามหน่วยงาน
+        if ($request->filled('department')) {
+            $query->whereHas('user', function($q) use ($request) {
+                $q->where('department', $request->department);
+            });
+        }
+
+        // กรองตามตำแหน่ง
+        if ($request->filled('position')) {
+            $query->whereHas('user', function($q) use ($request) {
+                $q->where('position', $request->position);
+            });
+        }
+
+        // กรองสถานะการทำงาน (Default เป็นปฏิบัติงาน)
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->whereHas('user', function($q) use ($request) {
+                $q->where('status', $request->status);
+            });
+        } elseif (!$request->filled('status')) {
+            $query->whereHas('user', function($q) {
+                $q->where('status', 'active');
+            });
+        }
+
+        $records = $query->orderBy('start_time', 'desc')->get();
+
+        // ดึงตัวเลือกสำหรับ Dropdown
+        $filterDepartments = User::whereNotNull('department')->distinct()->orderBy('department')->pluck('department');
+        $filterPositions = User::whereNotNull('position')->distinct()->orderBy('position')->pluck('position');
+
+        return view('meeting_summary', compact('records', 'filterDepartments', 'filterPositions'));
     }
-
-    // กรองตามตำแหน่ง
-    if ($request->filled('position')) {
-        $query->whereHas('user', function($q) use ($request) {
-            $q->where('position', $request->position);
-        });
-    }
-
-    // กรองสถานะการทำงาน (Default เป็นปฏิบัติงาน)
-    if ($request->filled('status') && $request->status !== 'all') {
-        $query->whereHas('user', function($q) use ($request) {
-            $q->where('status', $request->status);
-        });
-    } elseif (!$request->filled('status')) {
-        $query->whereHas('user', function($q) {
-            $q->where('status', 'active');
-        });
-    }
-
-    $records = $query->orderBy('created_at', 'desc')->get();
-
-    // ดึงตัวเลือกสำหรับ Dropdown
-    $filterDepartments = User::whereNotNull('department')->distinct()->orderBy('department')->pluck('department');
-    $filterPositions = User::whereNotNull('position')->distinct()->orderBy('position')->pluck('position');
-
-    return view('meeting_summary', compact('records', 'filterDepartments', 'filterPositions'));
-}
 }
