@@ -24,6 +24,9 @@
         <li class="nav-item">
             <a class="nav-link active fw-bold text-primary border-bottom-0 shadow-sm" href="{{ route('admin.reports.pivot') }}">Sum Pivot (รายเดือน)</a>
         </li>
+        <li class="nav-item">
+        <a class="nav-link text-dark" href="{{ route('admin.reports.department') }}">ภาพรวมหน่วยงาน</a>
+        </li>
     </ul>
 
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-4">

@@ -109,10 +109,21 @@
                             <td>{{ $user->position }}</td>
                             <td class="text-danger fw-bold fs-6">{{ number_format($user->total_hours, 1) }}</td>
                             <td>
+                                @php
+                                    // กำหนดสีเริ่มต้นเป็นสีแดง (ต่ำกว่า 50%)
+                                    $barColor = 'bg-danger'; 
+                                    
+                                    if ($user->kpi_percentage >= 100) {
+                                        $barColor = 'bg-success'; // สีเขียวเมื่อครบ 100%
+                                    } elseif ($user->kpi_percentage >= 50) {
+                                        $barColor = 'bg-warning text-dark'; // สีเหลืองเมื่อถึง 50%
+                                    }
+                                @endphp
+
                                 <div class="progress shadow-sm" style="height: 20px; font-size: 12px; background-color: #e9ecef;">
-                                    <div class="progress-bar {{ $user->kpi_passed ? 'bg-success' : 'bg-primary' }}" 
+                                    <div class="progress-bar {{ $barColor }} fw-bold" 
                                          role="progressbar" 
-                                         style="width: {{ $user->kpi_percentage }}%;" 
+                                         style="width: {{ $user->kpi_percentage > 100 ? 100 : $user->kpi_percentage }}%;" 
                                          aria-valuenow="{{ $user->kpi_percentage }}" 
                                          aria-valuemin="0" 
                                          aria-valuemax="100">

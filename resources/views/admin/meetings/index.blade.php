@@ -51,9 +51,34 @@
                             <td class="text-center">{{ $meeting->id }}</td>
                             <td class="fw-bold">{{ $meeting->user->name ?? 'ไม่พบผู้ใช้' }}</td>
                             <td class="topic-cell">{{ $meeting->topic }}</td>
-                            <td class="text-center">{{ \Carbon\Carbon::parse($meeting->start_time)->format('d/m/Y') }}</td>
-                            <td class="text-center">{{ \Carbon\Carbon::parse($meeting->end_time)->format('d/m/Y') }}</td>
-                            <td class="text-center text-danger fw-bold">{{ $meeting->total_hours }}</td>
+                            
+                            <td class="text-center">{{ \Carbon\Carbon::parse($meeting->start_time)->addYears(543)->format('d/m/Y') }}</td>
+                            <td class="text-center">{{ \Carbon\Carbon::parse($meeting->end_time)->addYears(543)->format('d/m/Y') }}</td>
+                            
+                            <td class="text-center text-danger fw-bold">
+                                @php
+                                    $val = floatval($meeting->total_hours);
+                                    $hours = floor($val);
+                                    $decimalPart = round($val - $hours, 2);
+                                    $minutes = 0;
+                                    
+                                    if ($decimalPart == 0.5) {
+                                        $minutes = 30;
+                                    } else {
+                                        $minutes = round($decimalPart * 100);
+                                        if ($minutes >= 60) {
+                                            $minutes = round($decimalPart * 60);
+                                        }
+                                    }
+                                @endphp
+                                
+                                @if($val == 0)
+                                    0 ชม.
+                                @else
+                                    {{ trim(($hours > 0 ? $hours . ' ชม. ' : '') . ($minutes > 0 ? $minutes . ' นาที' : '')) }}
+                                @endif
+                            </td>
+                            
                             <td class="text-center">{{ $meeting->month_year }}</td>
                             <td class="text-center">
                                 <a href="{{ route('admin.meetings.edit', $meeting->id) }}" class="btn btn-sm btn-warning shadow-sm"><i class="bi bi-pencil-square"></i></a>

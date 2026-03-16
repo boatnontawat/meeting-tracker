@@ -11,7 +11,6 @@ use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    // 💡 ดึงช่วงเดือนและ KPI จาก Setting ตรงๆ
     private function getSettings()
     {
         return [
@@ -23,13 +22,8 @@ class ReportController extends Controller
 
     private function getFilteredUsersQuery(Request $request)
     {
-        $query = User::query();
-
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
-        } elseif (!$request->filled('status')) {
-            $query->where('status', 'active');
-        }
+        // 🌟 บังคับดึงเฉพาะคนที่สถานะ 'active' (ตัดคนลาออกทิ้งไปเลย)
+        $query = User::where('status', 'active');
 
         if ($request->filled('department')) {
             $query->where('department', $request->department);
@@ -44,9 +38,10 @@ class ReportController extends Controller
 
     private function getFilterOptions()
     {
+        // 🌟 ดึงตัวเลือกแผนกและตำแหน่งเฉพาะจากคนที่ยังทำงานอยู่
         return [
-            'filterDepartments' => User::whereNotNull('department')->distinct()->orderBy('department')->pluck('department'),
-            'filterPositions' => User::whereNotNull('position')->distinct()->orderBy('position')->pluck('position'),
+            'filterDepartments' => User::where('status', 'active')->whereNotNull('department')->distinct()->orderBy('department')->pluck('department'),
+            'filterPositions' => User::where('status', 'active')->whereNotNull('position')->distinct()->orderBy('position')->pluck('position'),
         ];
     }
 
@@ -59,7 +54,6 @@ class ReportController extends Controller
         $options = $this->getFilterOptions();
         $users = $this->getFilteredUsersQuery($request)->get();
 
-        // 💡 บังคับกรองเฉพาะช่วงเดือนที่ตั้งค่า
         $meetingTotals = MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
             ->selectRaw('user_id, SUM(total_hours) as total_hours')
             ->groupBy('user_id')
@@ -90,7 +84,6 @@ class ReportController extends Controller
         $options = $this->getFilterOptions();
         $users = $this->getFilteredUsersQuery($request)->get();
 
-        // 💡 บังคับกรองเฉพาะช่วงเดือนที่ตั้งค่า
         $meetingTotals = MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
             ->selectRaw('user_id, SUM(total_hours) as total_hours')
             ->groupBy('user_id')
@@ -130,7 +123,6 @@ class ReportController extends Controller
         $endMonth = $settings['end'];
         $targetHours = $settings['kpi'];
 
-        // 💡 1. สร้างคอลัมน์เดือนจาก Setting เท่านั้น (ป้องกันเดือนเก่าโผล่มา)
         $months = [];
         $current = Carbon::parse($startMonth)->startOfMonth();
         $end = Carbon::parse($endMonth)->startOfMonth();
@@ -143,7 +135,6 @@ class ReportController extends Controller
         $options = $this->getFilterOptions();
         $users = $this->getFilteredUsersQuery($request)->get();
         
-        // 💡 2. ดึงชั่วโมงรวม เฉพาะเดือนที่ตั้งค่า
         $meetingData = MeetingRecord::whereBetween('month_year', [$startMonth, $endMonth])
             ->selectRaw('user_id, month_year, SUM(total_hours) as total')
             ->groupBy('user_id', 'month_year')
@@ -172,9 +163,68 @@ class ReportController extends Controller
             });
         }
 
-        // ส่งตัวแปรเป็น Array ธรรมดาไปที่ View
         $filter = ['start' => $startMonth, 'end' => $endMonth];
 
         return view('admin.reports.pivot', array_merge(compact('users', 'months', 'filter'), $options));
+    }
+    // 4. ภาพรวมหน่วยงาน (Department Overview)
+    public function departmentOverview(Request $request)
+    {
+        $settings = $this->getSettings();
+        $targetHours = $settings['kpi'];
+
+        $options = $this->getFilterOptions();
+        $users = $this->getFilteredUsersQuery($request)->get();
+
+        $meetingTotals = \App\Models\MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
+            ->selectRaw('user_id, SUM(total_hours) as total_hours')
+            ->groupBy('user_id')
+            ->pluck('total_hours', 'user_id');
+
+        $departments = [];
+        foreach ($users as $user) {
+            $hours = $meetingTotals[$user->id] ?? 0;
+            $dept = $user->department ?? 'ไม่ระบุ';
+            $pos = $user->position ?? 'ไม่ระบุ';
+
+            if (!isset($departments[$dept])) {
+                $departments[$dept] = [
+                    'total_dept_hours' => 0,
+                    'positions' => []
+                ];
+            }
+
+            if (!isset($departments[$dept]['positions'][$pos])) {
+                $departments[$dept]['positions'][$pos] = [
+                    'staff_count' => 0,
+                    'total_pos_hours' => 0
+                ];
+            }
+
+            $departments[$dept]['positions'][$pos]['staff_count'] += 1;
+            $departments[$dept]['positions'][$pos]['total_pos_hours'] += $hours;
+            $departments[$dept]['total_dept_hours'] += $hours;
+        }
+
+        // แปลงข้อมูลให้อยู่ในรูปแบบตารางแบนๆ เพื่อให้ DataTables จัดการง่าย
+        $flatData = [];
+        foreach ($departments as $deptName => $deptInfo) {
+            foreach ($deptInfo['positions'] as $posName => $posInfo) {
+                $flatData[] = [
+                    'department' => $deptName,
+                    'position' => $posName,
+                    'staff_count' => $posInfo['staff_count'],
+                    'total_pos_hours' => $posInfo['total_pos_hours'],
+                    'total_dept_hours' => $deptInfo['total_dept_hours'],
+                ];
+            }
+        }
+
+        // เรียงลำดับตามชื่อแผนก
+        usort($flatData, function($a, $b) {
+            return strcmp($a['department'], $b['department']);
+        });
+
+        return view('admin.reports.department_overview', array_merge(compact('flatData', 'targetHours'), $options));
     }
 }

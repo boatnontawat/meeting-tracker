@@ -30,7 +30,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // หน้ารายงาน และ หน้าตั้งค่า
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/master', [ReportController::class, 'masterSummary'])->name('reports.master'); // 🌟 เพิ่มบรรทัดนี้
-    Route::get('/reports/pivot', [ReportController::class, 'pivotSummary'])->name('reports.pivot'); // 🌟 เพิ่มบรรทัดนี้
+    Route::get('/reports/pivot', [ReportController::class, 'pivotSummary'])->name('reports.pivot');
+    Route::get('/reports/department', [ReportController::class, 'departmentOverview'])->name('admin.reports.department'); 
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
     Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
     

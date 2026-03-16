@@ -13,19 +13,21 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $totalUsers = User::count();
+        // 🌟 1. นับเฉพาะคนที่ยังปฏิบัติงานอยู่ (ตัดคนลาออก)
+        $totalUsers = User::where('status', 'active')->count();
         
-        // ดึงการตั้งค่าตรงๆ
         $startMonth = Setting::where('key', 'filter_start_month')->value('value') ?? date('Y-01');
         $endMonth = Setting::where('key', 'filter_end_month')->value('value') ?? date('Y-12');
 
-        // สร้าง Base Query บังคับกรองเดือน
-        $baseQuery = MeetingRecord::whereBetween('month_year', [$startMonth, $endMonth]);
+        // 🌟 2. ดึงข้อมูลการประชุมเฉพาะคนที่ยังปฏิบัติงานอยู่เท่านั้น
+        $baseQuery = MeetingRecord::whereBetween('month_year', [$startMonth, $endMonth])
+            ->whereHas('user', function($query) {
+                $query->where('status', 'active');
+            });
 
         $totalMeetings = (clone $baseQuery)->count();
         $totalHours = (clone $baseQuery)->sum('total_hours');
 
-        // 🌟 1. ดึงชั่วโมงการประชุม แยกตาม "หน่วยงาน" (เรียงจากมากไปน้อย)
         $departmentData = (clone $baseQuery)
             ->join('users', 'meeting_records.user_id', '=', 'users.id')
             ->selectRaw('users.department, SUM(meeting_records.total_hours) as sum_hours')
@@ -35,7 +37,6 @@ class DashboardController extends Controller
             ->orderByDesc('sum_hours')
             ->get();
 
-        // 🌟 2. ดึงชั่วโมงการประชุม แยกตาม "วิชาชีพ/ตำแหน่ง" (เรียงจากมากไปน้อย)
         $positionData = (clone $baseQuery)
             ->join('users', 'meeting_records.user_id', '=', 'users.id')
             ->selectRaw('users.position, SUM(meeting_records.total_hours) as sum_hours')
@@ -45,9 +46,8 @@ class DashboardController extends Controller
             ->orderByDesc('sum_hours')
             ->get();
 
-        // 🌟 3. ข้อมูลกราฟโดนัท (สัดส่วนประเภทการประชุม) ยังคงไว้เหมือนเดิม
         $typeData = (clone $baseQuery)
-            ->selectRaw('meeting_type, COUNT(id) as count')
+            ->selectRaw('meeting_type, COUNT(meeting_records.id) as count')
             ->groupBy('meeting_type')
             ->get();
 
