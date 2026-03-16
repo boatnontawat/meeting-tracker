@@ -14,13 +14,16 @@
 <div class="container-fluid px-3 px-md-4 mb-5">
     <ul class="nav nav-tabs nav-tabs-scrollable mb-4 mt-3 border-bottom-2 pb-1">
         <li class="nav-item">
-            <a class="nav-link active fw-bold text-primary border-bottom-0 shadow-sm" href="{{ route('admin.reports.index') }}">รายบุคคล (สรุป 10 วัน)</a>
+            <a class="nav-link text-dark" href="{{ route('admin.reports.index') }}">รายบุคคล (สรุป 10 วัน)</a>
         </li>
         <li class="nav-item">
             <a class="nav-link text-dark" href="{{ route('admin.reports.master') }}">Master Summary (รายแผนก)</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link text-dark" href="{{ route('admin.reports.pivot') }}">Sum Pivot (รายเดือน)</a>
+            <a class="nav-link active fw-bold text-primary border-bottom-0 shadow-sm" href="{{ route('admin.reports.pivot') }}">Sum Pivot (รายเดือน)</a>
+        </li>
+        <li class="nav-item">
+        <a class="nav-link text-dark" href="{{ route('admin.reports.department') }}">ภาพรวมหน่วยงาน</a>
         </li>
     </ul>
 
@@ -97,7 +100,18 @@
                     </thead>
                     <tbody>
                         @foreach($users as $index => $user)
-                        <tr class="align-middle {{ $user->total_hours == 0 ? 'table-danger' : '' }}">
+                        @php
+                            // 🌟 กำหนดสีของทั้งแถวตามเปอร์เซ็นต์ KPI
+                            $rowClass = 'table-danger'; // ค่าเริ่มต้นสีแดง (ต่ำกว่า 50%)
+                            
+                            if ($user->kpi_percentage >= 100) {
+                                $rowClass = 'table-success'; // ครบ 100% ให้เป็นแถวสีเขียว
+                            } elseif ($user->kpi_percentage >= 50) {
+                                $rowClass = 'table-warning'; // 50% ขึ้นไป ให้เป็นแถวสีเหลือง
+                            }
+                        @endphp
+
+                        <tr class="align-middle {{ $rowClass }}">
                             <td>{{ $index + 1 }}</td>
                             <td class="text-start fw-bold">
                                 {{ $user->name }}
@@ -109,19 +123,8 @@
                             <td>{{ $user->position }}</td>
                             <td class="text-danger fw-bold fs-6">{{ number_format($user->total_hours, 1) }}</td>
                             <td>
-                                @php
-                                    // กำหนดสีเริ่มต้นเป็นสีแดง (ต่ำกว่า 50%)
-                                    $barColor = 'bg-danger'; 
-                                    
-                                    if ($user->kpi_percentage >= 100) {
-                                        $barColor = 'bg-success'; // สีเขียวเมื่อครบ 100%
-                                    } elseif ($user->kpi_percentage >= 50) {
-                                        $barColor = 'bg-warning text-dark'; // สีเหลืองเมื่อถึง 50%
-                                    }
-                                @endphp
-
-                                <div class="progress shadow-sm" style="height: 20px; font-size: 12px; background-color: #e9ecef;">
-                                    <div class="progress-bar {{ $barColor }} fw-bold" 
+                                <div class="progress shadow-sm" style="height: 20px; font-size: 12px; background-color: rgba(255,255,255,0.5);">
+                                    <div class="progress-bar bg-dark text-white fw-bold" 
                                          role="progressbar" 
                                          style="width: {{ $user->kpi_percentage > 100 ? 100 : $user->kpi_percentage }}%;" 
                                          aria-valuenow="{{ $user->kpi_percentage }}" 
@@ -133,9 +136,9 @@
                             </td>
                             <td>
                                 @if($user->kpi_passed)
-                                    <span class="badge bg-success px-2 py-1">✅ ผ่าน</span>
+                                    <span class="badge bg-success px-2 py-1 shadow-sm">✅ ผ่าน</span>
                                 @else
-                                    <span class="badge bg-danger px-2 py-1">❌ ไม่ผ่าน</span>
+                                    <span class="badge bg-danger px-2 py-1 shadow-sm">❌ ไม่ผ่าน</span>
                                 @endif
                             </td>
                         </tr>
