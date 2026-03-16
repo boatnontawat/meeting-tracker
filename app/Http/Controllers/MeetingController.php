@@ -66,30 +66,44 @@ class MeetingController extends Controller
     public function summary(Request $request)
     {
         if ($request->ajax()) {
-            // ดึงค่าช่วงวันที่จาก Settings (ถ้าไม่มีให้เป็น null)
-            $startMonth = \App\Models\Setting::where('key', 'filter_start_month')->value('value');
-            $endMonth = \App\Models\Setting::where('key', 'filter_end_month')->value('value');
-
             $query = MeetingRecord::with('user');
             
-            // 🌟 กรองวันที่เฉพาะเมื่อมีการตั้งค่าที่ถูกต้องเท่านั้น
-            if ($startMonth && $endMonth) {
-                $query->whereBetween('month_year', [$startMonth, $endMonth]);
-            }
+            // 🌟 1. เช็คว่ามีการตั้งใจกดปุ่ม "กรองข้อมูล" (ส่งค่า Dropdown) มาหรือไม่
+            // ถ้า request มีคำว่า department ส่งมา แสดงว่าเกิดจากการกดปุ่มกรอง
+            $isFiltering = $request->has('department');
 
-            // กรองตามหน่วยงาน
-            if ($request->filled('department')) {
-                $query->whereHas('user', function($q) use ($request) {
-                    $q->where('department', $request->department);
-                });
-            }
+            if ($isFiltering) {
+                // ถ้าตั้งใจกดปุ่มกรอง ค่อยดึงการตั้งค่าช่วงเดือนมาบังคับใช้
+                $startMonth = \App\Models\Setting::where('key', 'filter_start_month')->value('value');
+                $endMonth = \App\Models\Setting::where('key', 'filter_end_month')->value('value');
+                
+                // กรองวันที่ประเมิน
+                if ($startMonth && $endMonth) {
+                    $query->whereBetween('month_year', [$startMonth, $endMonth]);
+                }
 
-            // กรองสถานะ (ถ้าเลือก all จะไม่กรองเลย เพื่อให้เห็นข้อมูลเก่าทั้งหมด)
-            if ($request->filled('status') && $request->status !== 'all') {
-                $query->whereHas('user', function($q) use ($request) {
-                    $q->where('status', $request->status);
-                });
+                // กรองตามหน่วยงาน
+                if ($request->filled('department')) {
+                    $query->whereHas('user', function($q) use ($request) {
+                        $q->where('department', $request->department);
+                    });
+                }
+
+                // กรองตามตำแหน่ง
+                if ($request->filled('position')) {
+                    $query->whereHas('user', function($q) use ($request) {
+                        $q->where('position', $request->position);
+                    });
+                }
+
+                // กรองสถานะ
+                if ($request->filled('status') && $request->status !== 'all') {
+                    $query->whereHas('user', function($q) use ($request) {
+                        $q->where('status', $request->status);
+                    });
+                }
             }
+            // 🌟 2. ถ้าไม่มีการกดปุ่ม (เพิ่งเปิดหน้าเว็บ) ระบบจะข้ามเงื่อนไขด้านบนทั้งหมด แล้วดึงข้อมูลทุกแถวมาแสดงทันที!
 
             $records = $query->orderBy('start_time', 'desc')->get()->map(function($record) {
                 return [
