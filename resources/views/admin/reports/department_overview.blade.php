@@ -27,10 +27,10 @@
             <a class="nav-link text-dark" href="{{ route('admin.reports.master') }}">Master Summary (รายแผนก)</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link active fw-bold text-primary border-bottom-0 shadow-sm" href="{{ route('admin.reports.pivot') }}">Sum Pivot (รายเดือน)</a>
+            <a class="nav-link text-dark" href="{{ route('admin.reports.pivot') }}">Sum Pivot (รายเดือน)</a>
         </li>
         <li class="nav-item">
-        <a class="nav-link text-dark" href="{{ route('admin.reports.department') }}">ภาพรวมหน่วยงาน</a>
+            <a class="nav-link active fw-bold text-primary border-bottom-0 shadow-sm" href="{{ route('admin.reports.department') }}">ภาพรวมหน่วยงาน</a>
         </li>
     </ul>
 

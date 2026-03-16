@@ -14,10 +14,18 @@
 
 <div class="container-fluid px-3 px-md-4 mb-5">
     <ul class="nav nav-tabs nav-tabs-scrollable mb-4 mt-3 border-bottom-2 pb-1">
-        <li class="nav-item"><a class="nav-link text-dark" href="{{ route('admin.reports.index') }}">รายบุคคล (สรุป 10 วัน)</a></li>
-        <li class="nav-item"><a class="nav-link active fw-bold text-primary border-bottom-0 shadow-sm" href="{{ route('admin.reports.master') }}">Master Summary (รายแผนก)</a></li>
-        <li class="nav-item"><a class="nav-link text-dark" href="{{ route('admin.reports.pivot') }}">Sum Pivot (รายเดือน)</a></li>
-        <li class="nav-item"><a class="nav-link text-dark" href="{{ route('admin.reports.department') }}">ภาพรวมหน่วยงาน</a></li>
+        <li class="nav-item">
+            <a class="nav-link text-dark" href="{{ route('admin.reports.index') }}">รายบุคคล (สรุป 10 วัน)</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link active fw-bold text-primary border-bottom-0 shadow-sm" href="{{ route('admin.reports.master') }}">Master Summary (รายแผนก)</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark" href="{{ route('admin.reports.pivot') }}">Sum Pivot (รายเดือน)</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark" href="{{ route('admin.reports.department') }}">ภาพรวมหน่วยงาน</a>
+        </li>
     </ul>
 
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-4">
