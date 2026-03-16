@@ -42,7 +42,7 @@
                     <h6 class="text-primary mb-3"><i class="bi bi-person-fill"></i> ข้อมูลผู้เข้าร่วม</h6>
                     <div class="row g-3">
                         <div class="col-12 col-md-4">
-                            <label class="form-label text-muted small fw-bold">ชื่อ-นามสกุล (พิมพ์เพื่อค้นหา)</label>
+                            <label class="form-label text-muted small fw-bold">ชื่อ-นามสกุล</label>
                             <input type="text" class="form-control" name="name" id="nameInput" list="nameList" placeholder="เลือกหรือพิมพ์ชื่อ..." required autocomplete="off">
                             <datalist id="nameList">
                                 @foreach($users as $user)
@@ -84,7 +84,17 @@
                         </div>
                         <div class="col-12 col-md-4">
                             <label class="form-label fw-bold">รวมเวลา (ชั่วโมง)</label>
-                            <input type="number" name="total_hours" class="form-control" step="0.1" min="0" placeholder="เช่น 6 หรือ 1.5" required>
+                            <select name="total_hours" id="totalHoursSelect" class="form-select" required>
+                                <option value="" disabled selected>เลือกชั่วโมง...</option>
+                                <option value="0.5">30 นาที</option>
+                                <option value="1">1 ชั่วโมง</option>
+                                <option value="2">2 ชั่วโมง</option>
+                                <option value="3">3 ชั่วโมง</option>
+                                <option value="4">4 ชั่วโมง</option>
+                                <option value="5">5 ชั่วโมง</option>
+                                <option value="custom">มากกว่า 5 ชั่วโมง (ระบุเอง)</option>
+                            </select>
+                            <input type="number" name="custom_hours" id="customHoursInput" class="form-control mt-2 d-none" step="0.1" min="0" placeholder="ระบุชั่วโมง (เช่น 6.5)">
                         </div>
                     </div>
                 </div>
@@ -93,7 +103,12 @@
                     <h6 class="text-primary mb-3"><i class="bi bi-journal-text"></i> รายละเอียดการประชุม</h6>
                     <div class="mb-3">
                         <label class="form-label text-muted small fw-bold">เรื่องประชุม/อบรม/หลักสูตร</label>
-                        <input type="text" class="form-control" name="topic" required>
+                        <input type="text" class="form-control" name="topic" list="topicList" placeholder="เลือกจากรายการ หรือพิมพ์ใหม่..." required autocomplete="off">
+                        <datalist id="topicList">
+                            @foreach($topics as $t)
+                                <option value="{{ $t->topic }}">
+                            @endforeach
+                        </datalist>
                     </div>
 
                     <div class="row g-3">
@@ -107,11 +122,21 @@
                         </div>
                         <div class="col-12 col-md-4">
                             <label class="form-label text-muted small fw-bold">หน่วยงานที่จัด</label>
-                            <input type="text" class="form-control" name="organizer" required>
+                            <input type="text" class="form-control" name="organizer" list="organizerList" placeholder="ระบุหน่วยงาน..." required autocomplete="off">
+                            <datalist id="organizerList">
+                                @foreach($organizers as $org)
+                                    <option value="{{ $org->organizer }}">
+                                @endforeach
+                            </datalist>
                         </div>
                         <div class="col-12 col-md-4">
                             <label class="form-label text-muted small fw-bold">สถานที่</label>
-                            <input type="text" class="form-control" name="location" required>
+                            <input type="text" class="form-control" name="location" list="locationList" placeholder="ระบุสถานที่..." required autocomplete="off">
+                            <datalist id="locationList">
+                                @foreach($locations as $loc)
+                                    <option value="{{ $loc->location }}">
+                                @endforeach
+                            </datalist>
                         </div>
                     </div>
 
@@ -145,6 +170,19 @@
                 document.getElementById('deptInput').value = '';
                 document.getElementById('posInput').value = '';
             }
+        }
+    });
+
+    // 🌟 ระบบซ่อน/แสดงช่องกรอกชั่วโมงเมื่อเลือก "ระบุเอง"
+    document.getElementById('totalHoursSelect').addEventListener('change', function() {
+        const customInput = document.getElementById('customHoursInput');
+        if (this.value === 'custom') {
+            customInput.classList.remove('d-none'); // แสดงช่องกรอก
+            customInput.setAttribute('required', 'required'); // บังคับให้ต้องกรอก
+        } else {
+            customInput.classList.add('d-none'); // ซ่อนช่อง
+            customInput.removeAttribute('required');
+            customInput.value = ''; // ล้างค่าทิ้ง
         }
     });
 </script>

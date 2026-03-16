@@ -16,12 +16,17 @@ class MeetingController extends Controller
         $departments = User::select('department')->distinct()->whereNotNull('department')->get();
         $positions = User::select('position')->distinct()->whereNotNull('position')->get();
         
-        return view('meeting_form', compact('users', 'departments', 'positions'));
+        // 🌟 ดึงข้อมูลประวัติการพิมพ์จากตาราง meeting_records มาทำเป็นตัวเลือก (Dropdown)
+        $topics = MeetingRecord::select('topic')->distinct()->whereNotNull('topic')->get();
+        $organizers = MeetingRecord::select('organizer')->distinct()->whereNotNull('organizer')->get();
+        $locations = MeetingRecord::select('location')->distinct()->whereNotNull('location')->get();
+        
+        return view('meeting_form', compact('users', 'departments', 'positions', 'topics', 'organizers', 'locations'));
     }
 
     public function store(Request $request)
     {
-        // 1. ค้นหาชื่อ User ก่อน
+        // ค้นหาชื่อ User ก่อน
         $user = User::where('name', $request->name)->first();
 
         if ($user) {
@@ -40,12 +45,18 @@ class MeetingController extends Controller
             ]);
         }
 
-        // 2. บันทึกข้อมูลการประชุม
+        // จัดการเรื่องชั่วโมง (ถ้าระบุเองให้ใช้ค่าจากช่อง custom_hours)
+        $final_hours = $request->total_hours;
+        if ($request->total_hours == 'custom') {
+            $final_hours = $request->custom_hours;
+        }
+
+        // บันทึกข้อมูลการประชุม (พิมพ์อะไรมาใหม่ ระบบจะจำเข้า DB ให้อัตโนมัติ)
         MeetingRecord::create([
             'user_id'      => $user->id,
             'start_time'   => $request->start_time,
             'end_time'     => $request->end_time,
-            'total_hours'  => $request->total_hours, // ใช้ค่าที่ผู้ใช้กรอกมาโดยตรง
+            'total_hours'  => $final_hours, 
             'topic'        => $request->topic,
             'meeting_type' => $request->meeting_type,
             'organizer'    => $request->organizer,
@@ -58,48 +69,50 @@ class MeetingController extends Controller
 
     public function summary(Request $request)
     {
-        // 1. ดึงค่าเริ่มต้น-สิ้นสุด จากตาราง settings
-        $startMonth = \App\Models\Setting::where('key', 'filter_start_month')->value('value');
-        $endMonth = \App\Models\Setting::where('key', 'filter_end_month')->value('value');
+        if ($request->ajax()) {
+            $startMonth = \App\Models\Setting::where('key', 'filter_start_month')->value('value');
+            $endMonth = \App\Models\Setting::where('key', 'filter_end_month')->value('value');
 
-        // 2. ใช้ whereBetween เพื่อบังคับกรองข้อมูลให้อยู่ในเดือนที่แอดมินตั้งค่าไว้เท่านั้น
-        $query = MeetingRecord::with('user');
-        
-        if ($startMonth && $endMonth) {
-            $query->whereBetween('month_year', [$startMonth, $endMonth]);
+            $query = MeetingRecord::with('user');
+            
+            if ($startMonth && $endMonth) {
+                $query->whereBetween('month_year', [$startMonth, $endMonth]);
+            }
+
+            if ($request->filled('department')) {
+                $query->whereHas('user', function($q) use ($request) {
+                    $q->where('department', $request->department);
+                });
+            }
+
+            if ($request->filled('position')) {
+                $query->whereHas('user', function($q) use ($request) {
+                    $q->where('position', $request->position);
+                });
+            }
+
+            if ($request->filled('status') && $request->status !== 'all') {
+                $query->whereHas('user', function($q) use ($request) {
+                    $q->where('status', $request->status);
+                });
+            } elseif (!$request->filled('status')) {
+                $query->whereHas('user', function($q) {
+                    $q->where('status', 'active');
+                });
+            }
+
+            $records = $query->orderBy('start_time', 'desc')->get()->map(function($record) {
+                $record->start_time_formatted = Carbon::parse($record->start_time)->format('d/m/Y');
+                $record->end_time_formatted = Carbon::parse($record->end_time)->format('d/m/Y');
+                return $record;
+            });
+
+            return response()->json(['data' => $records]);
         }
 
-        // กรองตามหน่วยงาน
-        if ($request->filled('department')) {
-            $query->whereHas('user', function($q) use ($request) {
-                $q->where('department', $request->department);
-            });
-        }
-
-        // กรองตามตำแหน่ง
-        if ($request->filled('position')) {
-            $query->whereHas('user', function($q) use ($request) {
-                $q->where('position', $request->position);
-            });
-        }
-
-        // กรองสถานะการทำงาน (Default เป็นปฏิบัติงาน)
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->whereHas('user', function($q) use ($request) {
-                $q->where('status', $request->status);
-            });
-        } elseif (!$request->filled('status')) {
-            $query->whereHas('user', function($q) {
-                $q->where('status', 'active');
-            });
-        }
-
-        $records = $query->orderBy('start_time', 'desc')->get();
-
-        // ดึงตัวเลือกสำหรับ Dropdown
         $filterDepartments = User::whereNotNull('department')->distinct()->orderBy('department')->pluck('department');
         $filterPositions = User::whereNotNull('position')->distinct()->orderBy('position')->pluck('position');
 
-        return view('meeting_summary', compact('records', 'filterDepartments', 'filterPositions'));
+        return view('meeting_summary', compact('filterDepartments', 'filterPositions'));
     }
 }
