@@ -66,47 +66,46 @@ class MeetingController extends Controller
     public function summary(Request $request)
     {
         if ($request->ajax()) {
+            // ดึงค่าช่วงวันที่จาก Settings (ถ้าไม่มีให้เป็น null)
             $startMonth = \App\Models\Setting::where('key', 'filter_start_month')->value('value');
             $endMonth = \App\Models\Setting::where('key', 'filter_end_month')->value('value');
 
             $query = MeetingRecord::with('user');
             
+            // 🌟 กรองวันที่เฉพาะเมื่อมีการตั้งค่าที่ถูกต้องเท่านั้น
             if ($startMonth && $endMonth) {
                 $query->whereBetween('month_year', [$startMonth, $endMonth]);
             }
 
+            // กรองตามหน่วยงาน
             if ($request->filled('department')) {
                 $query->whereHas('user', function($q) use ($request) {
                     $q->where('department', $request->department);
                 });
             }
 
-            if ($request->filled('position')) {
-                $query->whereHas('user', function($q) use ($request) {
-                    $q->where('position', $request->position);
-                });
-            }
-
-            // ถ้ามีค่าและไม่ใช่คำว่า 'all' ค่อยกรองสถานะ
+            // กรองสถานะ (ถ้าเลือก all จะไม่กรองเลย เพื่อให้เห็นข้อมูลเก่าทั้งหมด)
             if ($request->filled('status') && $request->status !== 'all') {
                 $query->whereHas('user', function($q) use ($request) {
                     $q->where('status', $request->status);
                 });
             }
 
-            // 🌟 ปรับปรุง: ตรวจสอบข้อมูลว่าง ป้องกันระบบพังจากประวัติข้อมูลเก่า
             $records = $query->orderBy('start_time', 'desc')->get()->map(function($record) {
-                // ถ้ามีวันที่ ให้แปลง ถ้าไม่มีให้ใส่ '-'
-                $record->start_time_formatted = $record->start_time ? Carbon::parse($record->start_time)->format('d/m/Y') : '-';
-                $record->end_time_formatted = $record->end_time ? Carbon::parse($record->end_time)->format('d/m/Y') : '-';
-                
-                // ดึงข้อมูล User มาเตรียมไว้เลย ป้องกัน Error เวลาหา User ไม่เจอ
-                $record->user_name = $record->user ? $record->user->name : 'ไม่ระบุชื่อ';
-                $record->user_department = $record->user ? $record->user->department : '-';
-                $record->user_position = $record->user ? $record->user->position : '-';
-                $record->user_status = $record->user ? $record->user->status : 'active';
-
-                return $record;
+                return [
+                    'user_name' => $record->user ? $record->user->name : 'ไม่ระบุชื่อ',
+                    'user_department' => $record->user ? $record->user->department : '-',
+                    'user_position' => $record->user ? $record->user->position : '-',
+                    'start_time_formatted' => $record->start_time ? \Carbon\Carbon::parse($record->start_time)->format('d/m/Y') : '-',
+                    'end_time_formatted' => $record->end_time ? \Carbon\Carbon::parse($record->end_time)->format('d/m/Y') : '-',
+                    'total_hours' => $record->total_hours ?? 0,
+                    'topic' => $record->topic ?? '-',
+                    'meeting_type' => $record->meeting_type ?? '-',
+                    'organizer' => $record->organizer ?? '-',
+                    'location' => $record->location ?? '-',
+                    'user_status' => $record->user ? $record->user->status : 'active',
+                    'month_year' => $record->month_year ?? '-'
+                ];
             });
 
             return response()->json(['data' => $records]);
