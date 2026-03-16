@@ -16,7 +16,6 @@ class MeetingController extends Controller
         $departments = User::select('department')->distinct()->whereNotNull('department')->get();
         $positions = User::select('position')->distinct()->whereNotNull('position')->get();
         
-        // 🌟 ดึงข้อมูลประวัติการพิมพ์จากตาราง meeting_records มาทำเป็นตัวเลือก (Dropdown)
         $topics = MeetingRecord::select('topic')->distinct()->whereNotNull('topic')->get();
         $organizers = MeetingRecord::select('organizer')->distinct()->whereNotNull('organizer')->get();
         $locations = MeetingRecord::select('location')->distinct()->whereNotNull('location')->get();
@@ -26,7 +25,6 @@ class MeetingController extends Controller
 
     public function store(Request $request)
     {
-        // ค้นหาชื่อ User ก่อน
         $user = User::where('name', $request->name)->first();
 
         if ($user) {
@@ -45,13 +43,11 @@ class MeetingController extends Controller
             ]);
         }
 
-        // จัดการเรื่องชั่วโมง (ถ้าระบุเองให้ใช้ค่าจากช่อง custom_hours)
         $final_hours = $request->total_hours;
         if ($request->total_hours == 'custom') {
             $final_hours = $request->custom_hours;
         }
 
-        // บันทึกข้อมูลการประชุม (พิมพ์อะไรมาใหม่ ระบบจะจำเข้า DB ให้อัตโนมัติ)
         MeetingRecord::create([
             'user_id'      => $user->id,
             'start_time'   => $request->start_time,
@@ -91,19 +87,25 @@ class MeetingController extends Controller
                 });
             }
 
+            // ถ้ามีค่าและไม่ใช่คำว่า 'all' ค่อยกรองสถานะ
             if ($request->filled('status') && $request->status !== 'all') {
                 $query->whereHas('user', function($q) use ($request) {
                     $q->where('status', $request->status);
                 });
-            } elseif (!$request->filled('status')) {
-                $query->whereHas('user', function($q) {
-                    $q->where('status', 'active');
-                });
             }
 
+            // 🌟 ปรับปรุง: ตรวจสอบข้อมูลว่าง ป้องกันระบบพังจากประวัติข้อมูลเก่า
             $records = $query->orderBy('start_time', 'desc')->get()->map(function($record) {
-                $record->start_time_formatted = Carbon::parse($record->start_time)->format('d/m/Y');
-                $record->end_time_formatted = Carbon::parse($record->end_time)->format('d/m/Y');
+                // ถ้ามีวันที่ ให้แปลง ถ้าไม่มีให้ใส่ '-'
+                $record->start_time_formatted = $record->start_time ? Carbon::parse($record->start_time)->format('d/m/Y') : '-';
+                $record->end_time_formatted = $record->end_time ? Carbon::parse($record->end_time)->format('d/m/Y') : '-';
+                
+                // ดึงข้อมูล User มาเตรียมไว้เลย ป้องกัน Error เวลาหา User ไม่เจอ
+                $record->user_name = $record->user ? $record->user->name : 'ไม่ระบุชื่อ';
+                $record->user_department = $record->user ? $record->user->department : '-';
+                $record->user_position = $record->user ? $record->user->position : '-';
+                $record->user_status = $record->user ? $record->user->status : 'active';
+
                 return $record;
             });
 

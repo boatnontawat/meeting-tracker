@@ -16,14 +16,11 @@
         .table-nowrap th, .table-nowrap td { white-space: nowrap; vertical-align: middle; }
         .table-dark { background-color: #212529 !important; }
         
-        /* ปรับให้ wrap-cell ยืดหยุ่นขึ้นในจอมือถือ */
         .topic-cell { white-space: normal !important; min-width: 200px; max-width: 350px; }
         .wrap-cell { white-space: normal !important; min-width: 150px; max-width: 250px; }
         
         .table-danger { background-color: #f8d7da !important; }
         .card { border-radius: 1rem; overflow: hidden; }
-        
-        /* แก้ปัญหาปุ่ม DataTables เบียดกันบนมือถือ */
         div.dt-buttons .btn { margin: 2px; }
     </style>
 </head>
@@ -79,9 +76,9 @@
                 <div class="col-12 col-sm-6 col-lg-3">
                     <label class="form-label fw-bold text-muted small"><i class="bi bi-person-check"></i> สถานะการทำงาน</label>
                     <select id="status" class="form-select form-select-sm">
-                        <option value="active" selected>ปฏิบัติงาน</option>
+                        <option value="all" selected>-- ทั้งหมด --</option>
+                        <option value="active">ปฏิบัติงาน</option>
                         <option value="inactive">ลาออก</option>
-                        <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3 d-flex gap-2">
@@ -138,25 +135,23 @@
             "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
             "pageLength": 50,
             
-            /* 🌟 ระบบ AJAX สำหรับโหลดข้อมูลความเร็วสูง */
             "ajax": {
                 "url": "{{ route('form.summary') }}",
                 "type": "GET",
                 "data": function (d) {
-                    // ส่งค่าจากกล่องค้นหาไปให้ Controller
                     d.department = $('#department').val();
                     d.position = $('#position').val();
                     d.status = $('#status').val();
                 }
             },
-            "deferRender": true, // ช่วยประหยัด RAM ให้เบราว์เซอร์
+            "deferRender": true, 
             
-            /* 🌟 ผูกข้อมูลจาก Controller ลงตาราง (ต้องเรียงให้ตรงกับ <thead>) */
+            /* 🌟 แก้ชื่อให้ตรงกับ Controller ที่ส่งมาใหม่ */
             "columns": [
                 { data: null, render: function (data, type, row, meta) { return meta.row + 1; }, className: "text-center" },
-                { data: 'user.name', defaultContent: '-', className: "fw-bold" },
-                { data: 'user.department', defaultContent: '-' },
-                { data: 'user.position', defaultContent: '-' },
+                { data: 'user_name', defaultContent: '-', className: "fw-bold" },
+                { data: 'user_department', defaultContent: '-' },
+                { data: 'user_position', defaultContent: '-' },
                 { data: 'start_time_formatted', className: "text-center" },
                 { data: 'end_time_formatted', className: "text-center" },
                 { data: 'total_hours', className: "text-center text-danger fw-bold fs-6" },
@@ -165,10 +160,10 @@
                 { data: 'organizer', className: "wrap-cell", defaultContent: '-' },
                 { data: 'location', className: "wrap-cell", defaultContent: '-' },
                 { 
-                    data: 'user.status', 
+                    data: 'user_status', 
                     className: "text-center",
                     render: function(data, type, row) {
-                        return (data === 'active') 
+                        return (data === 'active' || data === null) 
                             ? '<span class="badge bg-success">ปฏิบัติงาน</span>' 
                             : '<span class="badge bg-secondary">ลาออก</span>';
                     }
@@ -176,7 +171,6 @@
                 { data: 'month_year', className: "text-center" }
             ],
 
-            /* 🌟 ใส่สีแดงให้แถวที่ชั่วโมงเป็น 0 */
             "createdRow": function(row, data, dataIndex) {
                 if (data.total_hours == 0) {
                     $(row).addClass('table-danger');
@@ -213,17 +207,15 @@
             }
         });
 
-        // 🌟 ฟังก์ชันกดปุ่ม "กรองข้อมูล" ให้โหลดตารางใหม่ (ไม่ต้องโหลดทั้งหน้าเว็บ)
         $('#filterForm').on('submit', function(e) {
             e.preventDefault();
             table.ajax.reload(); 
         });
 
-        // 🌟 ฟังก์ชันกดปุ่ม "ล้างค่า" ให้เคลียร์ช่องแล้วโหลดตารางใหม่
         $('#btnReset').on('click', function() {
             $('#department').val('');
             $('#position').val('');
-            $('#status').val('active');
+            $('#status').val('all'); // 🌟 เคลียร์ค่าให้กลับมาเป็นคำว่า 'ทั้งหมด'
             table.ajax.reload();
         });
 
