@@ -102,15 +102,15 @@
         </div>
     </div>
 
-    <div class="row g-4">
+    <div class="row g-4 mb-4">
         <div class="col-12 col-xl-8 col-lg-7">
             <div class="card border-0 shadow-sm h-100" style="border-radius: 1rem;">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i> ชั่วโมงการประชุมรายเดือน</h5>
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-building text-primary me-2"></i> ชั่วโมงรวม แยกตามหน่วยงาน</h5>
                 </div>
                 <div class="card-body p-4">
-                    <div style="position: relative; height: 300px; width: 100%;"> 
-                        <canvas id="barChart"></canvas>
+                    <div style="position: relative; height: 400px; width: 100%;"> 
+                        <canvas id="deptChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -130,54 +130,101 @@
         </div>
     </div>
 
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 1rem;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-person-badge text-info me-2"></i> ชั่วโมงรวม แยกตามวิชาชีพ (ตำแหน่ง)</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div style="position: relative; height: 400px; width: 100%;"> 
+                        <canvas id="posChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        // ... (โค้ด JS กราฟเหมือนเดิมของคุณเลยครับ เพราะเขียน MaintainAspectRatio: false ไว้ดีแล้ว) ...
-        const barDataRaw = {!! json_encode($chartData ?? []) !!};
-        const barLabels = barDataRaw.map(item => item.month_year);
-        const barValues = barDataRaw.map(item => item.sum_hours);
+        
+        // 🌟 1. กราฟชั่วโมงแยกตามหน่วยงาน (Horizontal Bar Chart)
+        const deptDataRaw = {!! json_encode($departmentData ?? []) !!};
+        const deptLabels = deptDataRaw.map(item => item.department);
+        const deptValues = deptDataRaw.map(item => item.sum_hours);
 
-        const ctxBar = document.getElementById('barChart').getContext('2d');
-        let gradientBlue = ctxBar.createLinearGradient(0, 0, 0, 400);
-        gradientBlue.addColorStop(0, 'rgba(13, 110, 253, 0.8)');
-        gradientBlue.addColorStop(1, 'rgba(13, 110, 253, 0.2)');
-
-        new Chart(ctxBar, {
+        const ctxDept = document.getElementById('deptChart').getContext('2d');
+        new Chart(ctxDept, {
             type: 'bar',
             data: {
-                labels: barLabels,
+                labels: deptLabels,
                 datasets: [{
                     label: ' ชั่วโมงรวม (ชม.)',
-                    data: barValues,
-                    backgroundColor: gradientBlue,
+                    data: deptValues,
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)', // สีน้ำเงิน Primary
                     borderColor: '#0d6efd',
                     borderWidth: 1,
-                    borderRadius: 6,
-                    barPercentage: 0.6
+                    borderRadius: 4,
                 }]
             },
             options: {
+                indexAxis: 'y', // กำหนดเป็นแนวนอน
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#212529',
-                        padding: 12,
-                        titleFont: { size: 14 },
-                        bodyFont: { size: 14, weight: 'bold' },
-                        displayColors: false
+                        backgroundColor: '#212529', padding: 12,
+                        titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' }
                     }
                 },
                 scales: {
-                    y: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e9ecef' } },
-                    x: { grid: { display: false } }
+                    x: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e9ecef' } },
+                    y: { grid: { display: false } }
                 }
             }
         });
 
+        // 🌟 2. กราฟชั่วโมงแยกตามวิชาชีพ/ตำแหน่ง (Horizontal Bar Chart)
+        const posDataRaw = {!! json_encode($positionData ?? []) !!};
+        const posLabels = posDataRaw.map(item => item.position);
+        const posValues = posDataRaw.map(item => item.sum_hours);
+
+        const ctxPos = document.getElementById('posChart').getContext('2d');
+        new Chart(ctxPos, {
+            type: 'bar',
+            data: {
+                labels: posLabels,
+                datasets: [{
+                    label: ' ชั่วโมงรวม (ชม.)',
+                    data: posValues,
+                    backgroundColor: 'rgba(23, 162, 184, 0.7)', // สีฟ้า Info
+                    borderColor: '#17a2b8',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'y', // กำหนดเป็นแนวนอน
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#212529', padding: 12,
+                        titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' }
+                    }
+                },
+                scales: {
+                    x: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e9ecef' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+
+        // 🌟 3. กราฟโดนัท สัดส่วนประเภทการประชุม (เหมือนเดิม)
         const typeDataRaw = {!! json_encode($typeData ?? []) !!};
         const typeLabels = typeDataRaw.map(item => item.meeting_type);
         const typeValues = typeDataRaw.map(item => item.count);
@@ -200,12 +247,13 @@
                 cutout: '70%',
                 plugins: {
                     legend: {
-                        position: 'bottom', // เปลี่ยนเป็น bottom เพื่อให้บนมือถือแสดงผลได้ดีขึ้น
+                        position: 'bottom',
                         labels: { padding: 15, usePointStyle: true, font: {size: 11} }
                     }
                 }
             }
         });
+
     });
 </script>
 @endsection

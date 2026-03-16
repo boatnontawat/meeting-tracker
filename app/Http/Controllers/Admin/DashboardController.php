@@ -25,36 +25,35 @@ class DashboardController extends Controller
         $totalMeetings = (clone $baseQuery)->count();
         $totalHours = (clone $baseQuery)->sum('total_hours');
 
-        // ข้อมูลกราฟแท่ง
-        $rawChartData = (clone $baseQuery)
-            ->selectRaw('month_year, SUM(total_hours) as sum_hours')
-            ->groupBy('month_year')
-            ->pluck('sum_hours', 'month_year');
+        // 🌟 1. ดึงชั่วโมงการประชุม แยกตาม "หน่วยงาน" (เรียงจากมากไปน้อย)
+        $departmentData = (clone $baseQuery)
+            ->join('users', 'meeting_records.user_id', '=', 'users.id')
+            ->selectRaw('users.department, SUM(meeting_records.total_hours) as sum_hours')
+            ->whereNotNull('users.department')
+            ->where('users.department', '!=', '')
+            ->groupBy('users.department')
+            ->orderByDesc('sum_hours')
+            ->get();
 
-        // สร้างแกน X จากช่วงเดือนทั้งหมด
-        $months = [];
-        $currentMonth = Carbon::parse($startMonth)->startOfMonth();
-        $endDate = Carbon::parse($endMonth)->startOfMonth();
-        
-        while ($currentMonth->lte($endDate)) {
-            $months[] = $currentMonth->format('Y-m'); 
-            $currentMonth->addMonth();
-        }
+        // 🌟 2. ดึงชั่วโมงการประชุม แยกตาม "วิชาชีพ/ตำแหน่ง" (เรียงจากมากไปน้อย)
+        $positionData = (clone $baseQuery)
+            ->join('users', 'meeting_records.user_id', '=', 'users.id')
+            ->selectRaw('users.position, SUM(meeting_records.total_hours) as sum_hours')
+            ->whereNotNull('users.position')
+            ->where('users.position', '!=', '')
+            ->groupBy('users.position')
+            ->orderByDesc('sum_hours')
+            ->get();
 
-        $chartData = [];
-        foreach ($months as $month) {
-            $chartData[] = [
-                'month_year' => $month,
-                'sum_hours' => $rawChartData[$month] ?? 0
-            ];
-        }
-
-        // ข้อมูลกราฟโดนัท (สัดส่วนการประชุม)
+        // 🌟 3. ข้อมูลกราฟโดนัท (สัดส่วนประเภทการประชุม) ยังคงไว้เหมือนเดิม
         $typeData = (clone $baseQuery)
             ->selectRaw('meeting_type, COUNT(id) as count')
             ->groupBy('meeting_type')
             ->get();
 
-        return view('admin.dashboard', compact('totalUsers', 'totalMeetings', 'totalHours', 'chartData', 'typeData'));
+        return view('admin.dashboard', compact(
+            'totalUsers', 'totalMeetings', 'totalHours', 
+            'departmentData', 'positionData', 'typeData'
+        ));
     }
 }
