@@ -16,11 +16,14 @@
         .table-nowrap th, .table-nowrap td { white-space: nowrap; vertical-align: middle; }
         .table-dark { background-color: #212529 !important; }
         
+        /* ปรับให้ wrap-cell ยืดหยุ่นขึ้นในจอมือถือ */
         .topic-cell { white-space: normal !important; min-width: 200px; max-width: 350px; }
         .wrap-cell { white-space: normal !important; min-width: 150px; max-width: 250px; }
         
         .table-danger { background-color: #f8d7da !important; }
         .card { border-radius: 1rem; overflow: hidden; }
+        
+        /* แก้ปัญหาปุ่ม DataTables เบียดกันบนมือถือ */
         div.dt-buttons .btn { margin: 2px; }
     </style>
 </head>
@@ -76,9 +79,9 @@
                 <div class="col-12 col-sm-6 col-lg-3">
                     <label class="form-label fw-bold text-muted small"><i class="bi bi-person-check"></i> สถานะการทำงาน</label>
                     <select id="status" class="form-select form-select-sm">
-                        <option value="all" selected>-- ทั้งหมด --</option>
-                        <option value="active">ปฏิบัติงาน</option>
+                        <option value="active" selected>ปฏิบัติงาน</option>
                         <option value="inactive">ลาออก</option>
+                        <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3 d-flex gap-2">
@@ -135,18 +138,21 @@
             "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
             "pageLength": 50,
             
+            /* 🌟 ระบบ AJAX สำหรับโหลดข้อมูลความเร็วสูง */
             "ajax": {
                 "url": "{{ route('form.summary') }}",
                 "type": "GET",
                 "data": function (d) {
+                    // ส่งค่าจากกล่องค้นหาไปให้ Controller
                     d.department = $('#department').val();
                     d.position = $('#position').val();
                     d.status = $('#status').val();
                 }
             },
-            "deferRender": true, 
+            "deferRender": true, // ช่วยประหยัด RAM ให้เบราว์เซอร์
             
-            /* 🌟 แก้ชื่อให้ตรงกับ Controller ที่ส่งมาใหม่ */
+            /* 🌟 ผูกข้อมูลจาก Controller ลงตาราง (ต้องเรียงให้ตรงกับ <thead>) */
+            /* 🌟 แก้ชื่อให้ตรงกับ Controller และจัดรูปแบบเวลาใหม่ */
             "columns": [
                 { data: null, render: function (data, type, row, meta) { return meta.row + 1; }, className: "text-center" },
                 { data: 'user_name', defaultContent: '-', className: "fw-bold" },
@@ -154,7 +160,38 @@
                 { data: 'user_position', defaultContent: '-' },
                 { data: 'start_time_formatted', className: "text-center" },
                 { data: 'end_time_formatted', className: "text-center" },
-                { data: 'total_hours', className: "text-center text-danger fw-bold fs-6" },
+                { 
+                    data: 'total_hours', 
+                    className: "text-center fw-bold text-primary",
+                    render: function(data, type, row) {
+                        if (!data || parseFloat(data) === 0) return '<span class="text-danger">0 ชม.</span>';
+                        
+                        let val = parseFloat(data);
+                        let hours = Math.floor(val);
+                        let decimalPart = parseFloat((val - hours).toFixed(2));
+                        
+                        let minutes = 0;
+                        
+                        // 🌟 ระบบดักจับการพิมพ์เวลา 
+                        if (decimalPart === 0.5) {
+                            minutes = 30; // กรณีดึงจาก Dropdown ที่เราตั้งไว้ 0.5 = 30 นาที
+                        } else {
+                            // กรณีผู้ใช้พิมพ์เอง เช่น 1.30 ให้มองเป็น 30 นาทีเลย
+                            minutes = Math.round(decimalPart * 100); 
+                            
+                            // แต่ถ้าเผลอกรอกทศนิยมปกติ เช่น 1.75 จะคำนวณแบบมาตรฐาน (0.75 * 60 = 45 นาที)
+                            if (minutes >= 60) {
+                                minutes = Math.round(decimalPart * 60);
+                            }
+                        }
+
+                        let result = '';
+                        if (hours > 0) result += hours + ' ชม. ';
+                        if (minutes > 0) result += minutes + ' นาที';
+                        
+                        return result.trim();
+                    }
+                },
                 { data: 'topic', className: "topic-cell" },
                 { data: 'meeting_type', defaultContent: '-' },
                 { data: 'organizer', className: "wrap-cell", defaultContent: '-' },
@@ -171,6 +208,7 @@
                 { data: 'month_year', className: "text-center" }
             ],
 
+            /* 🌟 ใส่สีแดงให้แถวที่ชั่วโมงเป็น 0 */
             "createdRow": function(row, data, dataIndex) {
                 if (data.total_hours == 0) {
                     $(row).addClass('table-danger');
@@ -207,15 +245,17 @@
             }
         });
 
+        // 🌟 ฟังก์ชันกดปุ่ม "กรองข้อมูล" ให้โหลดตารางใหม่ (ไม่ต้องโหลดทั้งหน้าเว็บ)
         $('#filterForm').on('submit', function(e) {
             e.preventDefault();
             table.ajax.reload(); 
         });
 
+        // 🌟 ฟังก์ชันกดปุ่ม "ล้างค่า" ให้เคลียร์ช่องแล้วโหลดตารางใหม่
         $('#btnReset').on('click', function() {
             $('#department').val('');
             $('#position').val('');
-            $('#status').val('all'); // 🌟 เคลียร์ค่าให้กลับมาเป็นคำว่า 'ทั้งหมด'
+            $('#status').val('active');
             table.ajax.reload();
         });
 

@@ -105,13 +105,17 @@ class MeetingController extends Controller
             }
             // 🌟 2. ถ้าไม่มีการกดปุ่ม (เพิ่งเปิดหน้าเว็บ) ระบบจะข้ามเงื่อนไขด้านบนทั้งหมด แล้วดึงข้อมูลทุกแถวมาแสดงทันที!
 
+            // ดึงข้อมูลและแปลง Format ให้เรียบร้อย
             $records = $query->orderBy('start_time', 'desc')->get()->map(function($record) {
                 return [
                     'user_name' => $record->user ? $record->user->name : 'ไม่ระบุชื่อ',
                     'user_department' => $record->user ? $record->user->department : '-',
                     'user_position' => $record->user ? $record->user->position : '-',
-                    'start_time_formatted' => $record->start_time ? \Carbon\Carbon::parse($record->start_time)->format('d/m/Y') : '-',
-                    'end_time_formatted' => $record->end_time ? \Carbon\Carbon::parse($record->end_time)->format('d/m/Y') : '-',
+                    
+                    // 🌟 ปรับให้แสดงผลเป็น วัน/เดือน/ปี และบวก 543 ให้เป็นปี พ.ศ.
+                    'start_time_formatted' => $record->start_time ? \Carbon\Carbon::parse($record->start_time)->addYears(543)->format('d/m/Y') : '-',
+                    'end_time_formatted' => $record->end_time ? \Carbon\Carbon::parse($record->end_time)->addYears(543)->format('d/m/Y') : '-',
+                    
                     'total_hours' => $record->total_hours ?? 0,
                     'topic' => $record->topic ?? '-',
                     'meeting_type' => $record->meeting_type ?? '-',
@@ -121,7 +125,6 @@ class MeetingController extends Controller
                     'month_year' => $record->month_year ?? '-'
                 ];
             });
-
             return response()->json(['data' => $records]);
         }
 
