@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\MeetingRecord;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon; 
 
@@ -66,55 +67,47 @@ class MeetingController extends Controller
     public function summary(Request $request)
     {
         if ($request->ajax()) {
-            $query = MeetingRecord::with('user');
+            // 🌟 เรียงลำดับตาม ID DESC เพื่อให้คนแอดข้อมูลล่าสุดอยู่บนสุด
+            $query = MeetingRecord::with('user')->orderBy('id', 'desc');
             
-            // 🌟 1. เช็คว่ามีการตั้งใจกดปุ่ม "กรองข้อมูล" (ส่งค่า Dropdown) มาหรือไม่
-            // ถ้า request มีคำว่า department ส่งมา แสดงว่าเกิดจากการกดปุ่มกรอง
             $isFiltering = $request->has('department');
 
             if ($isFiltering) {
-                // ถ้าตั้งใจกดปุ่มกรอง ค่อยดึงการตั้งค่าช่วงเดือนมาบังคับใช้
-                $startMonth = \App\Models\Setting::where('key', 'filter_start_month')->value('value');
-                $endMonth = \App\Models\Setting::where('key', 'filter_end_month')->value('value');
+                $startMonth = Setting::where('key', 'filter_start_month')->value('value');
+                $endMonth = Setting::where('key', 'filter_end_month')->value('value');
                 
-                // กรองวันที่ประเมิน
                 if ($startMonth && $endMonth) {
                     $query->whereBetween('month_year', [$startMonth, $endMonth]);
                 }
 
-                // กรองตามหน่วยงาน
                 if ($request->filled('department')) {
                     $query->whereHas('user', function($q) use ($request) {
                         $q->where('department', $request->department);
                     });
                 }
 
-                // กรองตามตำแหน่ง
                 if ($request->filled('position')) {
                     $query->whereHas('user', function($q) use ($request) {
                         $q->where('position', $request->position);
                     });
                 }
 
-                // กรองสถานะ
                 if ($request->filled('status') && $request->status !== 'all') {
                     $query->whereHas('user', function($q) use ($request) {
                         $q->where('status', $request->status);
                     });
                 }
             }
-            // 🌟 2. ถ้าไม่มีการกดปุ่ม (เพิ่งเปิดหน้าเว็บ) ระบบจะข้ามเงื่อนไขด้านบนทั้งหมด แล้วดึงข้อมูลทุกแถวมาแสดงทันที!
 
-            // ดึงข้อมูลและแปลง Format ให้เรียบร้อย
-            $records = $query->orderBy('start_time', 'desc')->get()->map(function($record) {
+            $records = $query->get()->map(function($record) {
                 return [
                     'user_name' => $record->user ? $record->user->name : 'ไม่ระบุชื่อ',
                     'user_department' => $record->user ? $record->user->department : '-',
                     'user_position' => $record->user ? $record->user->position : '-',
                     
-                    // 🌟 ปรับให้แสดงผลเป็น วัน/เดือน/ปี และบวก 543 ให้เป็นปี พ.ศ.
-                    'start_time_formatted' => $record->start_time ? \Carbon\Carbon::parse($record->start_time)->addYears(543)->format('d/m/Y') : '-',
-                    'end_time_formatted' => $record->end_time ? \Carbon\Carbon::parse($record->end_time)->addYears(543)->format('d/m/Y') : '-',
+                    // 🌟 ปรับเป็นปี ค.ศ. (นำ addYears(543) ออก) และเรียงแบบ วัน/เดือน/ปี
+                    'start_time_formatted' => $record->start_time ? Carbon::parse($record->start_time)->format('d/m/Y') : '-',
+                    'end_time_formatted' => $record->end_time ? Carbon::parse($record->end_time)->format('d/m/Y') : '-',
                     
                     'total_hours' => $record->total_hours ?? 0,
                     'topic' => $record->topic ?? '-',

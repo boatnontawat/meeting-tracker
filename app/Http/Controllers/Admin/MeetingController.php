@@ -16,9 +16,10 @@ class MeetingController extends Controller
         $startMonth = Setting::where('key', 'filter_start_month')->value('value') ?? date('Y-01');
         $endMonth = Setting::where('key', 'filter_end_month')->value('value') ?? date('Y-12');
 
+        // 🌟 แก้ไข: เปลี่ยนการเรียงลำดับเป็น id desc เพื่อให้คนแอดล่าสุดอยู่บนสุด
         $meetings = MeetingRecord::whereBetween('month_year', [$startMonth, $endMonth])
                 ->with('user')
-                ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc') 
                 ->get();
                 
         return view('admin.meetings.index', compact('meetings'));
@@ -28,10 +29,9 @@ class MeetingController extends Controller
     {
         $users = User::orderBy('name', 'asc')->get();
         
-        // 🌟 ดึงข้อมูลประวัติการพิมพ์มาแสดงเป็นตัวเลือก (Dropdown)
-        $topics = MeetingRecord::select('topic')->distinct()->whereNotNull('topic')->get();
-        $organizers = MeetingRecord::select('organizer')->distinct()->whereNotNull('organizer')->get();
-        $locations = MeetingRecord::select('location')->distinct()->whereNotNull('location')->get();
+        $topics = MeetingRecord::select('topic')->distinct()->whereNotNull('topic')->orderBy('topic')->get();
+        $organizers = MeetingRecord::select('organizer')->distinct()->whereNotNull('organizer')->orderBy('organizer')->get();
+        $locations = MeetingRecord::select('location')->distinct()->whereNotNull('location')->orderBy('location')->get();
         
         return view('admin.meetings.form', compact('users', 'topics', 'organizers', 'locations'));
     }
@@ -43,19 +43,17 @@ class MeetingController extends Controller
             'topic' => 'required|string|max:255',
             'start_time' => 'required|date',
             'end_time' => 'required|date|after_or_equal:start_time',
+            'total_hours' => 'required',
         ]);
 
         // 🌟 จัดการเรื่องชั่วโมง (ถ้าระบุเองให้ใช้ค่าจาก custom_hours)
-        $final_hours = $request->total_hours;
-        if ($request->total_hours == 'custom') {
-            $final_hours = $request->custom_hours;
-        }
+        $final_hours = ($request->total_hours == 'custom') ? $request->custom_hours : $request->total_hours;
 
         MeetingRecord::create([
             'user_id' => $request->user_id,
             'start_time' => $request->start_time,
             'end_time' => $request->end_time,
-            'total_hours' => $final_hours,
+            'total_hours' => floatval($final_hours), // บันทึกเป็นตัวเลขทศนิยม
             'topic' => $request->topic,
             'meeting_type' => $request->meeting_type,
             'organizer' => $request->organizer,
@@ -70,10 +68,9 @@ class MeetingController extends Controller
     {
         $users = User::orderBy('name', 'asc')->get();
         
-        // 🌟 ดึงข้อมูลประวัติการพิมพ์มาแสดงเป็นตัวเลือก
-        $topics = MeetingRecord::select('topic')->distinct()->whereNotNull('topic')->get();
-        $organizers = MeetingRecord::select('organizer')->distinct()->whereNotNull('organizer')->get();
-        $locations = MeetingRecord::select('location')->distinct()->whereNotNull('location')->get();
+        $topics = MeetingRecord::select('topic')->distinct()->whereNotNull('topic')->orderBy('topic')->get();
+        $organizers = MeetingRecord::select('organizer')->distinct()->whereNotNull('organizer')->orderBy('organizer')->get();
+        $locations = MeetingRecord::select('location')->distinct()->whereNotNull('location')->orderBy('location')->get();
         
         return view('admin.meetings.form', compact('meeting', 'users', 'topics', 'organizers', 'locations'));
     }
@@ -84,19 +81,17 @@ class MeetingController extends Controller
             'user_id' => 'required|exists:users,id',
             'topic' => 'required|string|max:255',
             'start_time' => 'required|date',
+            'end_time' => 'required|date|after_or_equal:start_time',
         ]);
 
         // 🌟 จัดการเรื่องชั่วโมง (ถ้าระบุเองให้ใช้ค่าจาก custom_hours)
-        $final_hours = $request->total_hours;
-        if ($request->total_hours == 'custom') {
-            $final_hours = $request->custom_hours;
-        }
+        $final_hours = ($request->total_hours == 'custom') ? $request->custom_hours : $request->total_hours;
 
         $meeting->update([
             'user_id' => $request->user_id,
             'start_time' => $request->start_time,
             'end_time' => $request->end_time,
-            'total_hours' => $final_hours,
+            'total_hours' => floatval($final_hours),
             'topic' => $request->topic,
             'meeting_type' => $request->meeting_type,
             'organizer' => $request->organizer,
