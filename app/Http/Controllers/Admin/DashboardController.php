@@ -17,11 +17,12 @@ class DashboardController extends Controller
         // 🌟 1. นับจำนวนบุคลากรทั้งหมดที่ยังปฏิบัติงานอยู่ (status = active)
         $totalUsers = User::where('status', 'active')->count();
         
+        // ดึงการตั้งค่าช่วงเดือน และ "เกณฑ์ชั่วโมงการผ่าน (kpi_hours)" จาก Setting
         $startMonth = Setting::where('key', 'filter_start_month')->value('value') ?? date('Y-01');
         $endMonth = Setting::where('key', 'filter_end_month')->value('value') ?? date('Y-12');
+        $kpiHours = (float)(Setting::where('key', 'kpi_hours')->value('value') ?? 60);
 
-        // 🌟 2. ดึงข้อมูลผู้ใช้งาน (เฉพาะ active) พร้อมชั่วโมงที่ต้องทำ (required_hours)
-        // และนำไป JOIN กับชั่วโมงการประชุมที่ทำได้จริงในช่วงเวลาที่กำหนด
+        // 🌟 2. ดึงข้อมูลผู้ใช้งาน (เฉพาะ active) และคำนวณชั่วโมงรวมของแต่ละคน
         $userHours = User::where('status', 'active')
             ->leftJoin('meeting_records', function($join) use ($startMonth, $endMonth) {
                 $join->on('users.id', '=', 'meeting_records.user_id')
@@ -29,10 +30,9 @@ class DashboardController extends Controller
             })
             ->select(
                 'users.id', 
-                'users.required_hours', 
                 DB::raw('COALESCE(SUM(meeting_records.total_hours), 0) as total_hours')
             )
-            ->groupBy('users.id', 'users.required_hours')
+            ->groupBy('users.id')
             ->get();
 
         // 🌟 3. คำนวณจำนวนคนที่ ผ่าน / ไม่ผ่าน(แต่เกิน 50%) / ไม่ผ่าน(ต่ำกว่า 50%)
@@ -40,26 +40,17 @@ class DashboardController extends Controller
         $failedButOver50Count = 0;
         $failedCount = 0;
 
+        $halfKpi = $kpiHours / 2; // คำนวณ 50% ของ KPI
+
         foreach ($userHours as $user) {
-            // ดึงเกณฑ์ชั่วโมงของคนนั้นๆ (ถ้าค่าเป็น null หรือไม่เจอให้ default เป็น 0)
-            $required = (float)($user->required_hours ?? 0);
             $achieved = (float)$user->total_hours;
 
-            // ถ้าเกณฑ์เป็น 0 (อาจจะไม่ได้ตั้งไว้ หรือไม่มีภาระงาน) ให้ถือว่าผ่านเกณฑ์ไปก่อน
-            if ($required == 0) {
-                $passedCount++;
-                continue;
-            }
-
-            // คำนวณ 50% ของเกณฑ์รายบุคคล
-            $halfRequired = $required / 2;
-
-            if ($achieved >= $required) {
-                $passedCount++; // ผ่านเกณฑ์ (ได้ครบตามที่ตัวเองต้องทำ หรือมากกว่า)
-            } elseif ($achieved >= $halfRequired) {
-                $failedButOver50Count++; // ไม่ผ่าน แต่ทำได้ตั้งแต่ 50% ขึ้นไปของเกณฑ์ตัวเอง
+            if ($achieved >= $kpiHours) {
+                $passedCount++; // ผ่านเกณฑ์ (ได้ครบตาม KPI หรือมากกว่า)
+            } elseif ($achieved >= $halfKpi) {
+                $failedButOver50Count++; // ไม่ผ่าน แต่ทำได้ตั้งแต่ 50% ขึ้นไป
             } else {
-                $failedCount++; // ไม่ผ่าน (ทำได้น้อยกว่า 50% ของเกณฑ์ตัวเอง)
+                $failedCount++; // ไม่ผ่าน (ทำได้น้อยกว่า 50%)
             }
         }
 
@@ -69,7 +60,6 @@ class DashboardController extends Controller
                 $query->where('status', 'active');
             });
 
-        // ข้อมูลกราฟแท่ง (ชั่วโมงแยกตามแผนก)
         $departmentData = (clone $baseQuery)
             ->join('users', 'meeting_records.user_id', '=', 'users.id')
             ->selectRaw('users.department, SUM(meeting_records.total_hours) as sum_hours')
@@ -79,7 +69,6 @@ class DashboardController extends Controller
             ->orderByDesc('sum_hours')
             ->get();
 
-        // ข้อมูลกราฟโดนัท (ประเภทการประชุม)
         $typeData = (clone $baseQuery)
             ->selectRaw('meeting_type, COUNT(meeting_records.id) as count')
             ->groupBy('meeting_type')
@@ -102,10 +91,11 @@ class DashboardController extends Controller
             ->orderBy('users.department')
             ->get();
 
+        // ส่งข้อมูล $kpiHours ไปแสดงใน View ด้วย
         return view('admin.dashboard', compact(
             'totalUsers', 'passedCount', 'failedButOver50Count', 'failedCount',
             'departmentData', 'typeData',
-            'startMonth', 'endMonth', 'departmentOverview'
+            'startMonth', 'endMonth', 'departmentOverview', 'kpiHours'
         ));
     }
 }

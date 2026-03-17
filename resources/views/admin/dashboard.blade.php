@@ -53,7 +53,7 @@
                 <div class="card-body p-4 d-flex flex-column justify-content-between">
                     <div>
                         <h6 class="card-title-custom mb-1 text-uppercase fw-semibold" style="letter-spacing: 0.5px; opacity: 0.9;">
-                            <i class="bi bi-check-circle-fill me-2"></i>ผ่านเกณฑ์
+                            <i class="bi bi-check-circle-fill me-2"></i>ผ่านเกณฑ์ ({{ $kpiHours }} ชม.)
                         </h6>
                         <h2 class="display-5 fw-bold mb-0">{{ number_format($passedCount) }} <span class="fs-5 fw-normal">คน</span></h2>
                     </div>
