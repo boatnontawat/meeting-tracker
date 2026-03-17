@@ -33,96 +33,83 @@
 
 <div class="container-fluid px-3 px-md-4 py-4">
     
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-        <div class="w-100">
-            <h2 class="fw-bold text-dark mb-2">📊 ภาพรวมระบบ (Dashboard)</h2>
-            <p class="text-muted mb-0 small">
-                <i class="bi bi-funnel-fill text-primary"></i> ข้อมูลที่แสดงผลอยู่ในช่วง: 
-                <span class="badge bg-primary rounded-pill px-3 fs-6 shadow-sm d-inline-block mt-1 mt-sm-0">
-                    {{ \App\Models\Setting::where('key', 'filter_start_month')->value('value') ?? 'N/A' }}
-                </span>
-                <i class="bi bi-arrow-right text-muted mx-1 d-none d-sm-inline"></i>
-                <span class="badge bg-primary rounded-pill px-3 fs-6 shadow-sm d-inline-block mt-1 mt-sm-0">
-                    {{ \App\Models\Setting::where('key', 'filter_end_month')->value('value') ?? 'N/A' }}
-                </span>
-            </p>
-        </div>
-    </div>
-
-    <div class="row g-4 mb-4">
-        <div class="col-12 col-md-6 col-xl-4">
-            <div class="card stat-card bg-primary text-white border-0 shadow-sm h-100 position-relative">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center position-relative z-1">
-                        <div>
-                            <p class="card-title-custom mb-2">ผู้ใช้งานทั้งหมด</p>
-                            <h2 class="mb-0 fw-bold display-5">{{ number_format($totalUsers) }} <span class="fs-5 fw-normal">คน</span></h2>
-                        </div>
-                        <div class="bg-white bg-opacity-25 rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                            <i class="bi bi-people-fill fs-2"></i>
-                        </div>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card stat-card bg-primary text-white h-100 shadow-sm border-0 position-relative">
+                <div class="card-body p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <h6 class="card-title-custom mb-1 text-uppercase fw-semibold" style="letter-spacing: 0.5px; opacity: 0.9;">
+                            <i class="bi bi-people-fill me-2"></i>บุคลากรทั้งหมด
+                        </h6>
+                        <h2 class="display-5 fw-bold mb-0">{{ number_format($totalUsers) }} <span class="fs-5 fw-normal">คน</span></h2>
                     </div>
                 </div>
-                <i class="bi bi-people-fill stat-icon-bg"></i>
+                <i class="bi bi-people stat-icon-bg"></i>
             </div>
         </div>
 
-        <div class="col-12 col-md-6 col-xl-4">
-            <div class="card stat-card bg-success text-white border-0 shadow-sm h-100 position-relative">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center position-relative z-1">
-                        <div>
-                            <p class="card-title-custom mb-2">บันทึกการประชุม</p>
-                            <h2 class="mb-0 fw-bold display-5">{{ number_format($totalMeetings) }} <span class="fs-5 fw-normal">รายการ</span></h2>
-                        </div>
-                        <div class="bg-white bg-opacity-25 rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                            <i class="bi bi-journal-check fs-2"></i>
-                        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card stat-card bg-success text-white h-100 shadow-sm border-0 position-relative">
+                <div class="card-body p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <h6 class="card-title-custom mb-1 text-uppercase fw-semibold" style="letter-spacing: 0.5px; opacity: 0.9;">
+                            <i class="bi bi-check-circle-fill me-2"></i>ผ่านเกณฑ์
+                        </h6>
+                        <h2 class="display-5 fw-bold mb-0">{{ number_format($passedCount) }} <span class="fs-5 fw-normal">คน</span></h2>
                     </div>
                 </div>
-                <i class="bi bi-journal-text stat-icon-bg"></i>
+                <i class="bi bi-check-circle stat-icon-bg"></i>
             </div>
         </div>
 
-        <div class="col-12 col-md-12 col-xl-4">
-            <div class="card stat-card bg-warning text-dark border-0 shadow-sm h-100 position-relative">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center position-relative z-1">
-                        <div>
-                            <p class="card-title-custom mb-2 text-dark">ชั่วโมงรวมทั้งหมด</p>
-                            <h2 class="mb-0 fw-bold display-5">{{ number_format($totalHours, 1) }} <span class="fs-5 fw-normal">ชม.</span></h2>
-                        </div>
-                        <div class="bg-dark bg-opacity-10 rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                            <i class="bi bi-clock-history fs-2"></i>
-                        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card stat-card bg-warning text-dark h-100 shadow-sm border-0 position-relative">
+                <div class="card-body p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <h6 class="card-title-custom mb-1 text-uppercase fw-semibold" style="letter-spacing: 0.5px; opacity: 0.9;">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>ไม่ผ่าน (ทำได้ > 50%)
+                        </h6>
+                        <h2 class="display-5 fw-bold mb-0">{{ number_format($failedButOver50Count) }} <span class="fs-5 fw-normal">คน</span></h2>
                     </div>
                 </div>
-                <i class="bi bi-stopwatch-fill stat-icon-bg opacity-10"></i>
+                <i class="bi bi-exclamation-triangle stat-icon-bg text-dark" style="opacity: 0.1;"></i>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card stat-card bg-danger text-white h-100 shadow-sm border-0 position-relative">
+                <div class="card-body p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <h6 class="card-title-custom mb-1 text-uppercase fw-semibold" style="letter-spacing: 0.5px; opacity: 0.9;">
+                            <i class="bi bi-x-circle-fill me-2"></i>ไม่ผ่าน (ทำได้ < 50%)
+                        </h6>
+                        <h2 class="display-5 fw-bold mb-0">{{ number_format($failedCount) }} <span class="fs-5 fw-normal">คน</span></h2>
+                    </div>
+                </div>
+                <i class="bi bi-x-circle stat-icon-bg"></i>
             </div>
         </div>
     </div>
 
     <div class="row g-4 mb-4">
-        <div class="col-12 col-xl-8 col-lg-7">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 1rem;">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-building text-primary me-2"></i> ชั่วโมงรวม แยกตามหน่วยงาน</h5>
+        <div class="col-12 col-xl-8">
+            <div class="card shadow-sm border-0 h-100" style="border-radius: 1rem;">
+                <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-bar-chart-fill text-primary me-2"></i>ชั่วโมงการประชุมรวมแบ่งตามแผนก</h5>
                 </div>
-                <div class="card-body p-4">
-                    <div style="position: relative; height: 400px; width: 100%;"> 
-                        <canvas id="deptChart"></canvas>
-                    </div>
+                <div class="card-body p-4" style="height: 400px;">
+                    <canvas id="barChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-xl-4 col-lg-5">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 1rem;">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-pie-chart-fill text-success me-2"></i> สัดส่วนประเภทการประชุม</h5>
+        <div class="col-12 col-xl-4">
+            <div class="card shadow-sm border-0 h-100" style="border-radius: 1rem;">
+                <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-pie-chart-fill text-success me-2"></i>สัดส่วนประเภทการประชุม</h5>
                 </div>
-                <div class="card-body p-4 d-flex justify-content-center align-items-center">
-                    <div style="position: relative; height: 300px; width: 100%;">
+                <div class="card-body p-4 d-flex justify-content-center align-items-center" style="height: 400px;">
+                    <div style="width: 100%; max-width: 300px;">
                         <canvas id="doughnutChart"></canvas>
                     </div>
                 </div>
@@ -130,17 +117,38 @@
         </div>
     </div>
 
-    <div class="row g-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 1rem;">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-person-badge text-info me-2"></i> ชั่วโมงรวม แยกตามวิชาชีพ (ตำแหน่ง)</h5>
-                </div>
-                <div class="card-body p-4">
-                    <div style="position: relative; height: 400px; width: 100%;"> 
-                        <canvas id="posChart"></canvas>
-                    </div>
-                </div>
+    <div class="card shadow-sm border-0 mb-4" style="border-radius: 1rem;">
+        <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-building-fill text-info me-2"></i>สรุปภาพรวมรายแผนก</h5>
+        </div>
+        <div class="card-body px-4 pb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle table-nowrap">
+                    <thead class="table-light text-muted">
+                        <tr>
+                            <th scope="col" class="fw-semibold">แผนก</th>
+                            <th scope="col" class="fw-semibold text-center">จำนวนบุคลากร (คน)</th>
+                            <th scope="col" class="fw-semibold text-center">ชั่วโมงรวมของแผนก (ชม.)</th>
+                            <th scope="col" class="fw-semibold text-center">ค่าเฉลี่ย/คน (ชม.)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($departmentOverview as $dept)
+                            <tr>
+                                <td class="fw-bold text-dark">{{ $dept->department }}</td>
+                                <td class="text-center">{{ number_format($dept->total_users_in_dept) }}</td>
+                                <td class="text-center text-primary fw-bold">{{ number_format($dept->total_hours_dept, 1) }}</td>
+                                <td class="text-center text-success fw-bold">
+                                    {{ $dept->total_users_in_dept > 0 ? number_format($dept->total_hours_dept / $dept->total_users_in_dept, 1) : '0.0' }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">ไม่พบข้อมูลแผนกในช่วงเวลานี้</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -148,83 +156,38 @@
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", function() {
         
-        // 🌟 1. กราฟชั่วโมงแยกตามหน่วยงาน (Horizontal Bar Chart)
-        const deptDataRaw = {!! json_encode($departmentData ?? []) !!};
-        const deptLabels = deptDataRaw.map(item => item.department);
-        const deptValues = deptDataRaw.map(item => item.sum_hours);
+        // --- กราฟแท่ง (Bar Chart) ---
+        const barDataRaw = {!! json_encode($departmentData ?? []) !!};
+        const barLabels = barDataRaw.map(item => item.department);
+        const barValues = barDataRaw.map(item => item.sum_hours);
 
-        const ctxDept = document.getElementById('deptChart').getContext('2d');
-        new Chart(ctxDept, {
+        const ctxBar = document.getElementById('barChart').getContext('2d');
+        new Chart(ctxBar, {
             type: 'bar',
             data: {
-                labels: deptLabels,
+                labels: barLabels,
                 datasets: [{
-                    label: ' ชั่วโมงรวม (ชม.)',
-                    data: deptValues,
-                    backgroundColor: 'rgba(13, 110, 253, 0.7)', // สีน้ำเงิน Primary
-                    borderColor: '#0d6efd',
-                    borderWidth: 1,
-                    borderRadius: 4,
+                    label: 'ชั่วโมงรวม',
+                    data: barValues,
+                    backgroundColor: 'rgba(13, 110, 253, 0.85)',
+                    borderRadius: 6,
+                    barPercentage: 0.6
                 }]
             },
             options: {
-                indexAxis: 'y', // กำหนดเป็นแนวนอน
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#212529', padding: 12,
-                        titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' }
-                    }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    x: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e9ecef' } },
-                    y: { grid: { display: false } }
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e9ecef' } }
                 }
             }
         });
 
-        // 🌟 2. กราฟชั่วโมงแยกตามวิชาชีพ/ตำแหน่ง (Horizontal Bar Chart)
-        const posDataRaw = {!! json_encode($positionData ?? []) !!};
-        const posLabels = posDataRaw.map(item => item.position);
-        const posValues = posDataRaw.map(item => item.sum_hours);
-
-        const ctxPos = document.getElementById('posChart').getContext('2d');
-        new Chart(ctxPos, {
-            type: 'bar',
-            data: {
-                labels: posLabels,
-                datasets: [{
-                    label: ' ชั่วโมงรวม (ชม.)',
-                    data: posValues,
-                    backgroundColor: 'rgba(23, 162, 184, 0.7)', // สีฟ้า Info
-                    borderColor: '#17a2b8',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                }]
-            },
-            options: {
-                indexAxis: 'y', // กำหนดเป็นแนวนอน
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#212529', padding: 12,
-                        titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' }
-                    }
-                },
-                scales: {
-                    x: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e9ecef' } },
-                    y: { grid: { display: false } }
-                }
-            }
-        });
-
-        // 🌟 3. กราฟโดนัท สัดส่วนประเภทการประชุม (เหมือนเดิม)
+        // --- กราฟโดนัท (Doughnut Chart) ---
         const typeDataRaw = {!! json_encode($typeData ?? []) !!};
         const typeLabels = typeDataRaw.map(item => item.meeting_type);
         const typeValues = typeDataRaw.map(item => item.count);
@@ -237,8 +200,7 @@
                 datasets: [{
                     data: typeValues,
                     backgroundColor: ['#198754', '#ffc107', '#0dcaf0', '#dc3545', '#6f42c1', '#fd7e14'],
-                    borderWidth: 2,
-                    hoverOffset: 5
+                    borderWidth: 2
                 }]
             },
             options: {
@@ -246,14 +208,10 @@
                 maintainAspectRatio: false,
                 cutout: '70%',
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { padding: 15, usePointStyle: true, font: {size: 11} }
-                    }
+                    legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } }
                 }
             }
         });
-
     });
 </script>
 @endsection
