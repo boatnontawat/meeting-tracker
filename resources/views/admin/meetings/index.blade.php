@@ -55,7 +55,7 @@
                             <td class="text-center">{{ \Carbon\Carbon::parse($meeting->start_time)->format('d/m/Y') }}</td>
                             <td class="text-center">{{ \Carbon\Carbon::parse($meeting->end_time)->format('d/m/Y') }}</td>
                             
-                            <td class="text-center text-primary fw-bold">
+                            <td class="text-center text-danger fw-bold">
                                 @php
                                     $val = floatval($meeting->total_hours);
                                 @endphp

@@ -18,180 +18,182 @@
         
         /* ปรับให้ wrap-cell ยืดหยุ่นขึ้นในจอมือถือ */
         .topic-cell { white-space: normal !important; min-width: 200px; max-width: 350px; }
-        .wrap-cell { white-space: normal !important; min-width: 150px; }
+        .wrap-cell { white-space: normal !important; min-width: 150px; max-width: 250px; }
         
-        .card-header-gradient { background: linear-gradient(135deg, #0d6efd, #0dcaf0); color: white; }
-        div.dt-buttons .btn { margin-bottom: 5px; }
-
-        @media (max-width: 768px) {
-            .btn-action { width: 100%; margin-bottom: 5px; }
-            .filter-row { flex-direction: column; }
-            .dataTables_wrapper .row { flex-direction: column; }
-        }
+        .table-danger { background-color: #f8d7da !important; }
+        .card { border-radius: 1rem; overflow: hidden; }
+        
+        /* แก้ปัญหาปุ่ม DataTables เบียดกันบนมือถือ */
+        div.dt-buttons .btn { margin: 2px; }
     </style>
 </head>
 <body>
 
-<div class="container-fluid container-xl mt-4 mb-5">
+<div class="container-fluid py-4 px-3 px-lg-5">
+    
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show shadow-sm text-center mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> <strong>สำเร็จ!</strong> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
 
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
-        <h3 class="fw-bold mb-0 text-dark">
-            <i class="bi bi-journal-check text-primary me-2"></i> ตารางประวัติการประชุม
-        </h3>
-        <div class="d-flex gap-2 w-100 w-md-auto">
-            <a href="{{ url('/') }}" class="btn btn-primary shadow-sm flex-fill btn-action rounded-pill">
-                <i class="bi bi-plus-circle-fill me-1"></i> บันทึกชั่วโมงใหม่
-            </a>
-            <a href="{{ url('/admin/login') }}" class="btn btn-dark shadow-sm flex-fill btn-action rounded-pill">
-                <i class="bi bi-shield-lock-fill me-1"></i> เข้าสู่ระบบแอดมิน
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <div class="w-100">
+            <h3 class="fw-bold text-primary mb-2">📊 ตารางสรุปการเข้าประชุม</h3>
+            <p class="text-muted mb-0 small">
+                <i class="bi bi-calendar3"></i> ช่วงเวลาประเมิน: 
+                <span class="badge bg-primary px-2 shadow-sm">
+                    {{ \App\Models\Setting::where('key', 'filter_start_month')->value('value') ?? 'N/A' }} ถึง {{ \App\Models\Setting::where('key', 'filter_end_month')->value('value') ?? 'N/A' }}
+                </span>
+            </p>
+        </div>
+        <div class="w-100 text-md-end">
+            <a href="{{ route('form.create') }}" class="btn btn-success btn-lg shadow-sm w-100 w-md-auto">
+                <i class="bi bi-plus-circle me-1"></i> บันทึกข้อมูลเพิ่ม
             </a>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-radius: 1rem;">
-        <div class="card-body p-3 p-md-4">
-            <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-funnel-fill me-2"></i> ค้นหาแบบละเอียด</h5>
-            <form id="filterForm" class="row g-2 g-md-3 filter-row">
-                <div class="col-12 col-md-4">
-                    <label class="form-label small fw-bold">เลือกแผนก</label>
-                    <select id="department" class="form-select shadow-sm">
-                        <option value="">-- ทุกแผนก --</option>
+    <div class="card shadow-sm border-0 mb-4 bg-white">
+        <div class="card-body p-3">
+            <form id="filterForm" class="row g-3 align-items-end">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label fw-bold text-muted small"><i class="bi bi-building"></i> หน่วยงาน</label>
+                    <select id="department" class="form-select form-select-sm">
+                        <option value="">-- ทั้งหมด --</option>
                         @foreach($filterDepartments as $dept)
                             <option value="{{ $dept }}">{{ $dept }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-4">
-                    <label class="form-label small fw-bold">เลือกตำแหน่ง</label>
-                    <select id="position" class="form-select shadow-sm">
-                        <option value="">-- ทุกตำแหน่ง --</option>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label fw-bold text-muted small"><i class="bi bi-person-badge"></i> ตำแหน่ง</label>
+                    <select id="position" class="form-select form-select-sm">
+                        <option value="">-- ทั้งหมด --</option>
                         @foreach($filterPositions as $pos)
                             <option value="{{ $pos }}">{{ $pos }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-4">
-                    <label class="form-label small fw-bold">สถานะบุคลากร</label>
-                    <select id="status" class="form-select shadow-sm">
-                        <option value="active" selected>✅ ปฏิบัติงานอยู่ (Active)</option>
-                        <option value="inactive">❌ ลาออก/พ้นสภาพ (Inactive)</option>
-                        <option value="">-- ทั้งหมด --</option>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <label class="form-label fw-bold text-muted small"><i class="bi bi-person-check"></i> สถานะการทำงาน</label>
+                    <select id="status" class="form-select form-select-sm">
+                        <option value="active" selected>ปฏิบัติงาน</option>
+                        <option value="inactive">ลาออก</option>
+                        <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
-                <div class="col-12 d-flex justify-content-md-end gap-2 mt-3">
-                    <button type="submit" class="btn btn-primary shadow-sm rounded-pill px-4 w-100 w-md-auto">
-                        <i class="bi bi-search me-1"></i> กรองข้อมูล
-                    </button>
-                    <button type="button" id="btnReset" class="btn btn-outline-secondary shadow-sm rounded-pill px-4 w-100 w-md-auto">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> ล้างค่า
-                    </button>
+                <div class="col-12 col-sm-6 col-lg-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-funnel"></i> กรองข้อมูล</button>
+                    <button type="button" id="btnReset" class="btn btn-secondary btn-sm w-100"><i class="bi bi-arrow-clockwise"></i> ล้างค่า</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="card shadow border-0" style="border-radius: 1rem; overflow: hidden;">
-        <div class="card-header card-header-gradient p-3 p-md-4">
-            <h5 class="mb-0 fw-bold"><i class="bi bi-table me-2"></i> รายการประชุมที่บันทึกแล้ว</h5>
-        </div>
-        
-        <div class="card-body p-3 p-md-4 bg-white">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-2 p-md-4">
             <div class="table-responsive">
-                <table class="table table-hover table-striped align-middle w-100" id="meetingTable">
-                    <thead class="table-dark">
+                <table class="table table-hover table-bordered mb-0 table-nowrap w-100" id="meetingTable">
+                    <thead class="table-dark text-center align-middle">
                         <tr>
-                            <th scope="col" class="py-3">ชื่อ-นามสกุล</th>
-                            <th scope="col" class="py-3">แผนก</th>
-                            <th scope="col" class="py-3">ตำแหน่ง</th>
-                            <th scope="col" class="py-3 text-center">หัวข้อการประชุม</th>
-                            <th scope="col" class="py-3 text-center">เริ่มวันที่</th>
-                            <th scope="col" class="py-3 text-center">สิ้นสุดวันที่</th>
-                            <th scope="col" class="py-3 text-center">ชั่วโมง</th>
-                            <th scope="col" class="py-3 text-center">วันที่บันทึก</th>
+                            <th>ลำดับ</th>
+                            <th>เจ้าหน้าที่</th>
+                            <th>แผนก</th>
+                            <th>ตำแหน่ง</th>
+                            <th>วันเริ่ม</th>
+                            <th>วันสิ้นสุด</th>
+                            <th>ชม.</th>
+                            <th class="topic-cell">เรื่องประชุม/อบรม</th>
+                            <th>ประเภท</th>
+                            <th class="wrap-cell">หน่วยงานที่จัด</th>
+                            <th class="wrap-cell">สถานที่</th>
+                            <th>สถานะ</th>
+                            <th>เดือน-ปี</th>
                         </tr>
                     </thead>
                     <tbody>
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
 <script>
     $(document).ready(function() {
         var table = $('#meetingTable').DataTable({
-            processing: true,
-            serverSide: true,
-            responsive: true,
-            ajax: {
-                url: "{{ url('/api/meetings') }}",
-                data: function (d) {
+            "scrollX": true,
+            "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
+            "pageLength": 50,
+            
+            /* 🌟 ระบบ AJAX สำหรับโหลดข้อมูลความเร็วสูง */
+            "ajax": {
+                "url": "{{ route('form.summary') }}",
+                "type": "GET",
+                "data": function (d) {
+                    // ส่งค่าจากกล่องค้นหาไปให้ Controller
                     d.department = $('#department').val();
                     d.position = $('#position').val();
                     d.status = $('#status').val();
                 }
             },
-            columns: [
-                { data: 'user.name', name: 'user.name', className: 'fw-bold text-dark wrap-cell' },
-                { data: 'user.department', name: 'user.department' },
-                { data: 'user.position', name: 'user.position', className: 'wrap-cell' },
-                { data: 'topic', name: 'topic', className: 'topic-cell text-start' },
-                
+            "deferRender": true, // ช่วยประหยัด RAM ให้เบราว์เซอร์
+            
+            /* 🌟 ผูกข้อมูลจาก Controller ลงตาราง (ต้องเรียงให้ตรงกับ <thead>) */
+            "columns": [
+                { data: null, render: function (data, type, row, meta) { return meta.row + 1; }, className: "text-center" },
+                { data: 'user_name', defaultContent: '-', className: "fw-bold" },
+                { data: 'user_department', defaultContent: '-' },
+                { data: 'user_position', defaultContent: '-' },
                 // 🌟 ปรับวันที่ให้เป็น ค.ศ. (เรียงแบบ วัน/เดือน/ปี)
                 { 
-                    data: 'start_time', 
-                    name: 'start_time',
-                    className: 'text-center',
+                    data: 'start_time_formatted', 
+                    className: "text-center",
                     render: function(data, type, row) {
-                        if (type === 'display' && data) {
-                            let dateObj = new Date(data);
+                        if (type === 'display' && row.start_time) {
+                            let dateObj = new Date(row.start_time);
                             let day = String(dateObj.getDate()).padStart(2, '0');
                             let month = String(dateObj.getMonth() + 1).padStart(2, '0');
                             let year = dateObj.getFullYear(); // ใช้ ค.ศ.
                             let hours = String(dateObj.getHours()).padStart(2, '0');
                             let minutes = String(dateObj.getMinutes()).padStart(2, '0');
-                            return `<span class="badge bg-light text-dark border px-2 py-1">${day}/${month}/${year} ${hours}:${minutes}</span>`;
+                            return `${day}/${month}/${year} ${hours}:${minutes}`;
                         }
                         return data;
                     }
                 },
                 { 
-                    data: 'end_time', 
-                    name: 'end_time',
-                    className: 'text-center',
+                    data: 'end_time_formatted', 
+                    className: "text-center",
                     render: function(data, type, row) {
-                        if (type === 'display' && data) {
-                            let dateObj = new Date(data);
+                        if (type === 'display' && row.end_time) {
+                            let dateObj = new Date(row.end_time);
                             let day = String(dateObj.getDate()).padStart(2, '0');
                             let month = String(dateObj.getMonth() + 1).padStart(2, '0');
                             let year = dateObj.getFullYear(); // ใช้ ค.ศ.
                             let hours = String(dateObj.getHours()).padStart(2, '0');
                             let minutes = String(dateObj.getMinutes()).padStart(2, '0');
-                            return `<span class="badge bg-light text-secondary border px-2 py-1">${day}/${month}/${year} ${hours}:${minutes}</span>`;
+                            return `${day}/${month}/${year} ${hours}:${minutes}`;
                         }
-                        return '<span class="text-muted">-</span>';
+                        return data;
                     }
                 },
-                
                 // 🌟 แสดงชั่วโมงเป็นทศนิยมและเติมคำว่า "ชม."
                 { 
                     data: 'total_hours', 
-                    name: 'total_hours', 
-                    className: 'text-center fw-bold text-primary',
+                    className: "text-center fw-bold text-primary",
                     render: function(data, type, row) {
                         if(type === 'display') {
                             let hours = parseFloat(data);
@@ -201,26 +203,30 @@
                         return data;
                     }
                 },
-                
+                { data: 'topic', className: "topic-cell" },
+                { data: 'meeting_type', defaultContent: '-' },
+                { data: 'organizer', className: "wrap-cell", defaultContent: '-' },
+                { data: 'location', className: "wrap-cell", defaultContent: '-' },
                 { 
-                    data: 'created_at', 
-                    name: 'created_at',
-                    className: 'text-center small text-muted',
+                    data: 'user_status', 
+                    className: "text-center",
                     render: function(data, type, row) {
-                        if (type === 'display' && data) {
-                            let dateObj = new Date(data);
-                            let day = String(dateObj.getDate()).padStart(2, '0');
-                            let month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                            let year = dateObj.getFullYear(); // ใช้ ค.ศ.
-                            return `${day}/${month}/${year}`;
-                        }
-                        return data;
+                        return (data === 'active' || data === null) 
+                            ? '<span class="badge bg-success">ปฏิบัติงาน</span>' 
+                            : '<span class="badge bg-secondary">ลาออก</span>';
                     }
-                }
+                },
+                { data: 'month_year', className: "text-center" }
             ],
-            order: [[7, 'desc']], // เรียงตามวันที่บันทึกล่าสุด
 
-            "dom": "<'row mb-3 align-items-center'<'col-12 col-md-6 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start'B><'col-12 col-md-6 d-flex justify-content-center justify-content-md-end'f>>" +
+            /* 🌟 ใส่สีแดงให้แถวที่ชั่วโมงเป็น 0 */
+            "createdRow": function(row, data, dataIndex) {
+                if (data.total_hours == 0) {
+                    $(row).addClass('table-danger');
+                }
+            },
+
+            "dom": "<'row mb-3'<'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start'l><'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center flex-wrap'B><'col-12 col-md-4 d-flex justify-content-center justify-content-md-end'f>>" +
                    "<'row'<'col-sm-12'tr>>" +
                    "<'row mt-3'<'col-12 col-md-5 d-flex justify-content-center justify-content-md-start'i><'col-12 col-md-7 d-flex justify-content-center justify-content-md-end'p>>",
             "buttons": [
@@ -250,7 +256,7 @@
             }
         });
 
-        // 🌟 ฟังก์ชันกดปุ่ม "กรองข้อมูล" ให้โหลดตารางใหม่
+        // 🌟 ฟังก์ชันกดปุ่ม "กรองข้อมูล" ให้โหลดตารางใหม่ (ไม่ต้องโหลดทั้งหน้าเว็บ)
         $('#filterForm').on('submit', function(e) {
             e.preventDefault();
             table.ajax.reload(); 
@@ -264,8 +270,9 @@
             table.ajax.reload();
         });
 
+        setTimeout(function() { table.columns.adjust().draw(); }, 150);
+        $(window).on('resize', function () { table.columns.adjust(); });
     });
 </script>
-
 </body>
 </html>

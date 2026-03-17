@@ -17,128 +17,72 @@
 
 <div class="container-fluid container-md mt-4 mb-5">
     
-    <div class=\"mb-3 mx-auto\" style=\"max-width: 800px;\">
+    <div class="mb-3 mx-auto" style="max-width: 800px;">
         <a href="{{ url('/summary') }}" class="btn btn-secondary shadow-sm d-inline-flex align-items-center">
             <i class="bi bi-arrow-left-circle me-2"></i> กลับหน้าตารางสรุป
         </a>
     </div>
 
-    <div class="card shadow border-0 mx-auto" style="max-width: 800px; border-radius: 1rem;">
-        <div class="card-header bg-primary text-white p-4" style="border-radius: 1rem 1rem 0 0;">
-            <h4 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2"></i> บันทึกข้อมูลการประชุม (User / Staff)</h4>
-            <p class="mb-0 mt-1 opacity-75 small">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อผลประโยชน์ในการนับชั่วโมงของท่าน</p>
+    <div class="card shadow border-0 mx-auto" style="max-width: 800px; border-radius: 12px;">
+        <div class="card-header bg-primary text-white text-center py-3" style="border-radius: 12px 12px 0 0;">
+            <h5 class="mb-0 fw-bold">แบบฟอร์มบันทึกการประชุม</h5>
         </div>
-        
-        <div class="card-body p-4 p-md-5 bg-white">
+        <div class="card-body p-3 p-md-4">
             
-            @if ($errors->any())
-                <div class="alert alert-danger shadow-sm rounded">
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            @if(session('success'))
+                <div class="alert alert-success text-center fw-bold shadow-sm">
                     <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             @endif
 
-            <form action="{{ url('/store') }}" method="POST">
+            <form action="{{ route('form.store') }}" method="POST">
                 @csrf
-                
-                <h5 class="fw-bold text-primary mb-3 border-bottom pb-2">1. ข้อมูลผู้เข้าร่วม</h5>
-                <div class="row g-3 mb-4">
-                    <div class="col-md-12">
-                        <label class="form-label fw-bold text-dark">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
-                        <input class="form-control" list="datalistOptions" id="nameInput" name="name" placeholder="พิมพ์เพื่อค้นหาชื่อ..." autocomplete="off" required>
-                        <datalist id="datalistOptions">
-                            @foreach ($users as $user)
-                                <option value="{{ $user->name }}"></option>
-                            @endforeach
-                        </datalist>
-                    </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small">แผนก</label>
-                        <input type="text" class="form-control bg-light" id="deptInput" readonly placeholder="ดึงข้อมูลอัตโนมัติ">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small">ตำแหน่ง</label>
-                        <input type="text" class="form-control bg-light" id="posInput" readonly placeholder="ดึงข้อมูลอัตโนมัติ">
+                <div class="p-3 mb-4 bg-white border rounded shadow-sm">
+                    <h6 class="text-primary mb-3"><i class="bi bi-person-fill"></i> ข้อมูลผู้เข้าร่วม</h6>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-muted small fw-bold">ชื่อ-นามสกุล</label>
+                            <input type="text" class="form-control" name="name" id="nameInput" list="nameList" placeholder="เลือกหรือพิมพ์ชื่อ..." required autocomplete="off">
+                            <datalist id="nameList">
+                                @foreach($users as $user)
+                                    <option value="{{ $user->name }}">
+                                @endforeach
+                            </datalist>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-muted small fw-bold">แผนก</label>
+                            <input type="text" class="form-control bg-light" name="department" id="deptInput" list="deptList" placeholder="แผนก..." required autocomplete="off">
+                            <datalist id="deptList">
+                                @foreach($departments as $dept)
+                                    <option value="{{ $dept->department }}">
+                                @endforeach
+                            </datalist>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-muted small fw-bold">ตำแหน่ง</label>
+                            <input type="text" class="form-control bg-light" name="position" id="posInput" list="posList" placeholder="ตำแหน่ง..." required autocomplete="off">
+                            <datalist id="posList">
+                                @foreach($positions as $pos)
+                                    <option value="{{ $pos->position }}">
+                                @endforeach
+                            </datalist>
+                        </div>
                     </div>
                 </div>
 
-                <h5 class="fw-bold text-primary mb-3 border-bottom pb-2">2. รายละเอียดการประชุม</h5>
-                <div class="row g-3">
-                    <div class="col-md-12">
-                        <label class="form-label fw-bold text-dark">หัวข้อการประชุม / อบรม <span class="text-danger">*</span></label>
-                        <input class="form-control" list="topicOptions" name="topic" placeholder="ระบุหัวข้อ (พิมพ์เพื่อค้นหาประวัติเดิมได้)" autocomplete="off" required>
-                        <datalist id="topicOptions">
-                            @foreach ($topics as $t)
-                                <option value="{{ $t->topic }}"></option>
-                            @endforeach
-                        </datalist>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold text-dark">ประเภทการประชุม <span class="text-danger">*</span></label>
-                        <select class="form-select" name="meeting_type" required>
-                            <option value="" selected disabled>-- เลือกประเภท --</option>
-                            <option value="ประชุมภายในแผนก">ประชุมภายในแผนก</option>
-                            <option value="ประชุมระดับองค์กร">ประชุมระดับองค์กร (Townhall)</option>
-                            <option value="อบรมทักษะทางวิชาชีพ">อบรมทักษะทางวิชาชีพ</option>
-                            <option value="อบรมด้าน Soft Skills">อบรมด้าน Soft Skills</option>
-                            <option value="ประชุมกับหน่วยงานภายนอก">ประชุมกับหน่วยงานภายนอก</option>
-                            <option value="อื่นๆ">อื่นๆ</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold text-dark">เดือน/ปี (ที่นับชั่วโมง) <span class="text-danger">*</span></label>
-                        <input type="month" class="form-control" name="month_year" value="{{ date('Y-m') }}" required>
-                        <small class="text-muted d-block mt-1">ใช้สำหรับการสรุปรายงานประจำเดือน</small>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold text-dark">ผู้จัด (Organizer) <span class="text-danger">*</span></label>
-                        <input class="form-control" list="organizerOptions" name="organizer" placeholder="ระบุผู้จัด" autocomplete="off" required>
-                        <datalist id="organizerOptions">
-                            @foreach ($organizers as $o)
-                                <option value="{{ $o->organizer }}"></option>
-                            @endforeach
-                        </datalist>
-                    </div>
-
-                    <div class="col-md-6 mb-4">
-                        <label class="form-label fw-bold text-dark">สถานที่ประชุม <span class="text-danger">*</span></label>
-                        <input class="form-control" list="locationOptions" name="location" placeholder="ระบุสถานที่" autocomplete="off" required>
-                        <datalist id="locationOptions">
-                            @foreach ($locations as $l)
-                                <option value="{{ $l->location }}"></option>
-                            @endforeach
-                        </datalist>
-                    </div>
-                </div>
-
-                <h5 class="fw-bold text-primary mb-3 border-bottom pb-2">3. เวลาที่เข้าร่วม</h5>
-                <div class="row g-3 bg-primary bg-opacity-10 p-3 rounded mb-4 border border-primary border-opacity-25">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold text-dark"><i class="bi bi-calendar-check me-2 text-primary"></i>วันที่ และ เวลาเริ่ม <span class="text-danger">*</span></label>
-                        <input type="datetime-local" class="form-control shadow-sm" name="start_time" required>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <label class="form-label text-dark fw-semibold"><i class="bi bi-calendar-x me-2 text-secondary"></i>วันที่ และ เวลาสิ้นสุด (ถ้ามี)</label>
-                        <input type="datetime-local" class="form-control shadow-sm" name="end_time">
-                        <small class="text-muted d-block mt-1">ปล่อยว่างได้หากไม่ทราบเวลาสิ้นสุดแน่ชัด</small>
-                    </div>
-
-                    <div class="col-md-12">
+                <div class="p-3 mb-4 bg-white border rounded shadow-sm">
+                    <h6 class="text-primary mb-3"><i class="bi bi-calendar-check"></i> วันเวลาที่จัดการประชุม</h6>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-bold">วันที่เริ่ม</label>
+                            <input type="date" name="start_time" class="form-control" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-bold">วันที่สิ้นสุด</label>
+                            <input type="date" name="end_time" class="form-control" required>
+                        </div>
+                        <div class="col-md-12">
                         <div class="mb-4">
                             <label class="form-label fw-bold text-dark"><i class="bi bi-stopwatch text-primary me-2"></i>จำนวนชั่วโมงที่เข้าร่วม <span class="text-danger">*</span></label>
                             <select class="form-select shadow-sm" id="totalHoursSelect" name="total_hours" required>
@@ -170,9 +114,56 @@
                     </div>
                 </div>
 
-                <div class="d-grid gap-2 mt-2">
-                    <button type="submit" class="btn btn-primary btn-lg shadow rounded-pill text-uppercase fw-bold">
-                        <i class="bi bi-floppy-fill me-2"></i> บันทึกข้อมูลลงระบบ
+                <div class="p-3 mb-4 bg-white border rounded shadow-sm">
+                    <h6 class="text-primary mb-3"><i class="bi bi-journal-text"></i> รายละเอียดการประชุม</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">เรื่องประชุม/อบรม/หลักสูตร</label>
+                        <input type="text" class="form-control" name="topic" list="topicList" placeholder="เลือกจากรายการ หรือพิมพ์ใหม่..." required autocomplete="off">
+                        <datalist id="topicList">
+                            @foreach($topics as $t)
+                                <option value="{{ $t->topic }}">
+                            @endforeach
+                        </datalist>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-muted small fw-bold">ประเภท</label>
+                            <select class="form-select" name="meeting_type" required>
+                                <option value="ในโรงพยาบาล">ในโรงพยาบาล</option>
+                                <option value="นอกโรงพยาบาล">นอกโรงพยาบาล</option>
+                                <option value="Online">Online</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-muted small fw-bold">หน่วยงานที่จัด</label>
+                            <input type="text" class="form-control" name="organizer" list="organizerList" placeholder="ระบุหน่วยงาน..." required autocomplete="off">
+                            <datalist id="organizerList">
+                                @foreach($organizers as $org)
+                                    <option value="{{ $org->organizer }}">
+                                @endforeach
+                            </datalist>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label text-muted small fw-bold">สถานที่</label>
+                            <input type="text" class="form-control" name="location" list="locationList" placeholder="ระบุสถานที่..." required autocomplete="off">
+                            <datalist id="locationList">
+                                @foreach($locations as $loc)
+                                    <option value="{{ $loc->location }}">
+                                @endforeach
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label text-muted small fw-bold">เดือน-ปี (Year-Month)</label>
+                        <input type="month" class="form-control" name="month_year" required>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4 d-grid d-md-block">
+                    <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm">
+                        <i class="bi bi-floppy-fill me-1"></i> บันทึกข้อมูลลงระบบ
                     </button>
                 </div>
             </form>
@@ -200,21 +191,16 @@
     // 🌟 ระบบซ่อน/แสดงช่องกรอกชั่วโมงเมื่อเลือก "ระบุเอง"
     document.getElementById('totalHoursSelect').addEventListener('change', function() {
         const customInput = document.getElementById('customHoursInput');
-        const customHelp = document.getElementById('customHoursHelp');
-        
         if (this.value === 'custom') {
             customInput.classList.remove('d-none'); // แสดงช่องกรอก
-            customHelp.classList.remove('d-none');
             customInput.setAttribute('required', 'required'); // บังคับให้ต้องกรอก
         } else {
             customInput.classList.add('d-none'); // ซ่อนช่อง
-            customHelp.classList.add('d-none');
             customInput.removeAttribute('required');
             customInput.value = ''; // ล้างค่าทิ้ง
         }
     });
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
