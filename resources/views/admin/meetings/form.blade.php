@@ -58,19 +58,28 @@
                         <label class="form-label fw-bold text-muted small">รวมเวลา (ชั่วโมง) <span class="text-danger">*</span></label>
                         @php
                             $savedHours = old('total_hours', $meeting->total_hours ?? '');
-                            $isCustom = !in_array((string)$savedHours, ['', '0.5', '1', '2', '3', '4', '5']);
+                            // 🌟 เช็คว่าค่าที่มีอยู่ เป็นค่ามาตรฐาน 0.5 - 6.0 หรือเป็นค่าที่พิมพ์ระบุเอง
+                            $standardHours = ['0.5', '1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6'];
+                            $isCustom = !in_array((string)$savedHours, array_merge([''], $standardHours));
                         @endphp
+                        
                         <select name="total_hours" id="totalHoursSelect" class="form-select" required>
-                            <option value="" disabled {{ $savedHours == '' ? 'selected' : '' }}>เลือกชั่วโมง...</option>
-                            <option value="0.5" {{ $savedHours == '0.5' ? 'selected' : '' }}>30 นาที</option>
+                            <option value="" disabled {{ $savedHours == '' ? 'selected' : '' }}>-- เลือกชั่วโมง --</option>
+                            <option value="0.5" {{ $savedHours == '0.5' ? 'selected' : '' }}>0.5 ชั่วโมง (30 นาที)</option>
                             <option value="1" {{ $savedHours == '1' ? 'selected' : '' }}>1 ชั่วโมง</option>
+                            <option value="1.5" {{ $savedHours == '1.5' ? 'selected' : '' }}>1.5 ชั่วโมง (1 ชม. 30 นาที)</option>
                             <option value="2" {{ $savedHours == '2' ? 'selected' : '' }}>2 ชั่วโมง</option>
+                            <option value="2.5" {{ $savedHours == '2.5' ? 'selected' : '' }}>2.5 ชั่วโมง</option>
                             <option value="3" {{ $savedHours == '3' ? 'selected' : '' }}>3 ชั่วโมง</option>
+                            <option value="3.5" {{ $savedHours == '3.5' ? 'selected' : '' }}>3.5 ชั่วโมง</option>
                             <option value="4" {{ $savedHours == '4' ? 'selected' : '' }}>4 ชั่วโมง</option>
+                            <option value="4.5" {{ $savedHours == '4.5' ? 'selected' : '' }}>4.5 ชั่วโมง</option>
                             <option value="5" {{ $savedHours == '5' ? 'selected' : '' }}>5 ชั่วโมง</option>
-                            <option value="custom" {{ $isCustom && $savedHours != '' ? 'selected' : '' }}>มากกว่า 5 ชั่วโมง (ระบุเอง)</option>
+                            <option value="5.5" {{ $savedHours == '5.5' ? 'selected' : '' }}>5.5 ชั่วโมง</option>
+                            <option value="6" {{ $savedHours == '6' ? 'selected' : '' }}>6 ชั่วโมง</option>
+                            <option value="custom" {{ $isCustom && $savedHours != '' ? 'selected' : '' }}>-- ระบุเอง (มากกว่า 6 ชั่วโมง) --</option>
                         </select>
-                        <input type="number" name="custom_hours" id="customHoursInput" class="form-control mt-2 {{ $isCustom && $savedHours != '' ? '' : 'd-none' }}" step="0.1" min="0" placeholder="ระบุชั่วโมง (เช่น 6.5)" value="{{ $isCustom ? $savedHours : '' }}">
+                        <input type="number" name="custom_hours" id="customHoursInput" class="form-control mt-2 {{ $isCustom && $savedHours != '' ? '' : 'd-none' }}" step="0.5" min="6.5" placeholder="ระบุชั่วโมง (เช่น 6.5, 7)" value="{{ $isCustom ? $savedHours : '' }}">
                     </div>
 
                     <div class="col-12 mb-2 mt-4">

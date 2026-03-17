@@ -117,34 +117,85 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-radius: 1rem;">
-        <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
-            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-building-fill text-info me-2"></i>สรุปภาพรวมรายแผนก</h5>
+    <div class="card shadow-sm border-0 mb-4" style="border-radius: 1rem; overflow: hidden;">
+        <div class="card-header bg-white border-bottom pt-4 pb-3 px-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="bi bi-building-fill text-primary me-2"></i> ผลการดำเนินงานรายแผนก (Department Performance)
+            </h5>
+            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fs-6 shadow-sm">
+                <i class="bi bi-flag-fill text-success me-1"></i> เป้าหมายเฉลี่ย: {{ $kpiHours }} ชม./คน
+            </span>
         </div>
-        <div class="card-body px-4 pb-4">
+
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle table-nowrap">
-                    <thead class="table-light text-muted">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-muted" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">
                         <tr>
-                            <th scope="col" class="fw-semibold">แผนก</th>
-                            <th scope="col" class="fw-semibold text-center">จำนวนบุคลากร (คน)</th>
-                            <th scope="col" class="fw-semibold text-center">ชั่วโมงรวมของแผนก (ชม.)</th>
-                            <th scope="col" class="fw-semibold text-center">ค่าเฉลี่ย/คน (ชม.)</th>
+                            <th class="ps-4 py-3 fw-semibold border-0">ชื่อแผนก</th>
+                            <th class="text-center py-3 fw-semibold border-0">จำนวนบุคลากร</th>
+                            <th class="text-center py-3 fw-semibold border-0">ชั่วโมงรวม</th>
+                            <th class="pe-4 py-3 fw-semibold border-0" style="width: 35%;">ค่าเฉลี่ยเปรียบเทียบ KPI</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="border-top-0">
                         @forelse($departmentOverview as $dept)
+                            @php
+                                // คำนวณค่าเฉลี่ย และเปอร์เซ็นต์ความสำเร็จเทียบกับ KPI
+                                $avgHours = $dept->total_users_in_dept > 0 ? ($dept->total_hours_dept / $dept->total_users_in_dept) : 0;
+                                $percent = $kpiHours > 0 ? ($avgHours / $kpiHours) * 100 : 0;
+                                $percentBar = $percent > 100 ? 100 : $percent; // ล็อคหลอดไม่ให้เกิน 100%
+                                
+                                // จัดการสีของแถบสถานะ (แดง < 50%, เหลือง 50-99%, เขียว >= 100%)
+                                $pgColor = 'bg-danger';
+                                $textColor = 'text-danger';
+                                if($percent >= 100) {
+                                    $pgColor = 'bg-success';
+                                    $textColor = 'text-success';
+                                } elseif($percent >= 50) {
+                                    $pgColor = 'bg-warning';
+                                    $textColor = 'text-warning';
+                                }
+                            @endphp
                             <tr>
-                                <td class="fw-bold text-dark">{{ $dept->department }}</td>
-                                <td class="text-center">{{ number_format($dept->total_users_in_dept) }}</td>
-                                <td class="text-center text-primary fw-bold">{{ number_format($dept->total_hours_dept, 1) }}</td>
-                                <td class="text-center text-success fw-bold">
-                                    {{ $dept->total_users_in_dept > 0 ? number_format($dept->total_hours_dept / $dept->total_users_in_dept, 1) : '0.0' }}
+                                <td class="ps-4 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 45px; height: 45px;">
+                                            <i class="bi bi-diagram-3-fill fs-5"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 fw-bold text-dark">{{ $dept->department }}</h6>
+                                            <small class="text-muted">ข้อมูลอัปเดตล่าสุด</small>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td class="text-center py-3">
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2 fs-6 rounded-pill">
+                                        <i class="bi bi-people-fill me-1"></i> {{ number_format($dept->total_users_in_dept) }} คน
+                                    </span>
+                                </td>
+
+                                <td class="text-center py-3">
+                                    <h5 class="mb-0 fw-bold text-dark">{{ number_format($dept->total_hours_dept, 1) }} <span class="text-muted fw-normal fs-6">ชม.</span></h5>
+                                </td>
+
+                                <td class="pe-4 py-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold {{ $textColor }} fs-6">{{ number_format($avgHours, 1) }} ชม.</span>
+                                        <span class="text-muted small fw-bold">{{ number_format($percent, 0) }}%</span>
+                                    </div>
+                                    <div class="progress shadow-sm" style="height: 8px; border-radius: 10px; background-color: #f1f5f9;">
+                                        <div class="progress-bar {{ $pgColor }} progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ $percentBar }}%; border-radius: 10px;" aria-valuenow="{{ $percentBar }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="text-center py-4 text-muted">ไม่พบข้อมูลแผนกในช่วงเวลานี้</td>
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                                    ยังไม่มีข้อมูลการประชุมในแผนกใดๆ
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
