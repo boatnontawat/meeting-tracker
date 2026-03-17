@@ -56,7 +56,7 @@
                     <label class="form-label small fw-bold">เลือกแผนก</label>
                     <select id="department" class="form-select shadow-sm">
                         <option value="">-- ทุกแผนก --</option>
-                        @foreach($departments as $dept)
+                        @foreach($filterDepartments as $dept)
                             <option value="{{ $dept }}">{{ $dept }}</option>
                         @endforeach
                     </select>
@@ -65,7 +65,7 @@
                     <label class="form-label small fw-bold">เลือกตำแหน่ง</label>
                     <select id="position" class="form-select shadow-sm">
                         <option value="">-- ทุกตำแหน่ง --</option>
-                        @foreach($positions as $pos)
+                        @foreach($filterPositions as $pos)
                             <option value="{{ $pos }}">{{ $pos }}</option>
                         @endforeach
                     </select>
@@ -187,7 +187,7 @@
                     }
                 },
                 
-                // 🌟 แก้ไข: แสดงชั่วโมงเป็นทศนิยมและเติมคำว่า "ชม."
+                // 🌟 แสดงชั่วโมงเป็นทศนิยมและเติมคำว่า "ชม."
                 { 
                     data: 'total_hours', 
                     name: 'total_hours', 
@@ -250,7 +250,7 @@
             }
         });
 
-        // 🌟 ฟังก์ชันกดปุ่ม "กรองข้อมูล" ให้โหลดตารางใหม่ (ไม่ต้องโหลดทั้งหน้าเว็บ)
+        // 🌟 ฟังก์ชันกดปุ่ม "กรองข้อมูล" ให้โหลดตารางใหม่
         $('#filterForm').on('submit', function(e) {
             e.preventDefault();
             table.ajax.reload(); 
