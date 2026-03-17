@@ -67,7 +67,7 @@ class MeetingController extends Controller
     public function summary(Request $request)
     {
         if ($request->ajax()) {
-            // 🌟 เรียงลำดับตาม ID DESC เพื่อให้คนแอดข้อมูลล่าสุดอยู่บนสุด
+            // 🌟 เรียงลำดับจาก ID ล่าสุด เพื่อให้คนแอดข้อมูลล่าสุดอยู่บนสุดเสมอ
             $query = MeetingRecord::with('user')->orderBy('id', 'desc');
             
             $isFiltering = $request->has('department');
@@ -105,7 +105,7 @@ class MeetingController extends Controller
                     'user_department' => $record->user ? $record->user->department : '-',
                     'user_position' => $record->user ? $record->user->position : '-',
                     
-                    // 🌟 ปรับเป็นปี ค.ศ. (นำ addYears(543) ออก) และเรียงแบบ วัน/เดือน/ปี
+                    // 🌟 ปรับวันที่กลับเป็น ปี ค.ศ. และเรียง วัน/เดือน/ปี
                     'start_time_formatted' => $record->start_time ? Carbon::parse($record->start_time)->format('d/m/Y') : '-',
                     'end_time_formatted' => $record->end_time ? Carbon::parse($record->end_time)->format('d/m/Y') : '-',
                     

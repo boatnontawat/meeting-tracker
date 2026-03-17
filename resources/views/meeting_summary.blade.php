@@ -138,26 +138,25 @@
             "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
             "pageLength": 50,
             
-            /* 🌟 ระบบ AJAX สำหรับโหลดข้อมูลความเร็วสูง */
             "ajax": {
                 "url": "{{ route('form.summary') }}",
                 "type": "GET",
                 "data": function (d) {
-                    // ส่งค่าจากกล่องค้นหาไปให้ Controller
                     d.department = $('#department').val();
                     d.position = $('#position').val();
                     d.status = $('#status').val();
                 }
             },
-            "deferRender": true, // ช่วยประหยัด RAM ให้เบราว์เซอร์
+            "deferRender": true,
+            "order": [], // ปิดการเรียงลำดับเริ่มต้นเพื่อให้ยึดตามลำดับที่ส่งมาจาก Controller (ล่าสุดอยู่บน)
             
-            /* 🌟 ผูกข้อมูลจาก Controller ลงตาราง (ต้องเรียงให้ตรงกับ <thead>) */
             "columns": [
                 { data: null, render: function (data, type, row, meta) { return meta.row + 1; }, className: "text-center" },
                 { data: 'user_name', defaultContent: '-', className: "fw-bold" },
                 { data: 'user_department', defaultContent: '-' },
                 { data: 'user_position', defaultContent: '-' },
-                // 🌟 ปรับวันที่ให้เป็น ค.ศ. (เรียงแบบ วัน/เดือน/ปี)
+                
+                // 🌟 แก้ไข: แสดงวันที่เป็น ค.ศ. (ว/ด/ป)
                 { 
                     data: 'start_time_formatted', 
                     className: "text-center",
@@ -166,10 +165,8 @@
                             let dateObj = new Date(row.start_time);
                             let day = String(dateObj.getDate()).padStart(2, '0');
                             let month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                            let year = dateObj.getFullYear(); // ใช้ ค.ศ.
-                            let hours = String(dateObj.getHours()).padStart(2, '0');
-                            let minutes = String(dateObj.getMinutes()).padStart(2, '0');
-                            return `${day}/${month}/${year} ${hours}:${minutes}`;
+                            let year = dateObj.getFullYear(); // ใช้ ค.ศ. (ดึงจากเครื่องพนักงาน)
+                            return `${day}/${month}/${year}`;
                         }
                         return data;
                     }
@@ -183,14 +180,13 @@
                             let day = String(dateObj.getDate()).padStart(2, '0');
                             let month = String(dateObj.getMonth() + 1).padStart(2, '0');
                             let year = dateObj.getFullYear(); // ใช้ ค.ศ.
-                            let hours = String(dateObj.getHours()).padStart(2, '0');
-                            let minutes = String(dateObj.getMinutes()).padStart(2, '0');
-                            return `${day}/${month}/${year} ${hours}:${minutes}`;
+                            return `${day}/${month}/${year}`;
                         }
                         return data;
                     }
                 },
-                // 🌟 แสดงชั่วโมงเป็นทศนิยมและเติมคำว่า "ชม."
+                
+                // 🌟 แก้ไข: แสดงชั่วโมงเป็นทศนิยมตามด้วย "ชม."
                 { 
                     data: 'total_hours', 
                     className: "text-center fw-bold text-primary",
@@ -203,6 +199,7 @@
                         return data;
                     }
                 },
+                
                 { data: 'topic', className: "topic-cell" },
                 { data: 'meeting_type', defaultContent: '-' },
                 { data: 'organizer', className: "wrap-cell", defaultContent: '-' },
@@ -219,7 +216,6 @@
                 { data: 'month_year', className: "text-center" }
             ],
 
-            /* 🌟 ใส่สีแดงให้แถวที่ชั่วโมงเป็น 0 */
             "createdRow": function(row, data, dataIndex) {
                 if (data.total_hours == 0) {
                     $(row).addClass('table-danger');
@@ -229,6 +225,7 @@
             "dom": "<'row mb-3'<'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start'l><'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center flex-wrap'B><'col-12 col-md-4 d-flex justify-content-center justify-content-md-end'f>>" +
                    "<'row'<'col-sm-12'tr>>" +
                    "<'row mt-3'<'col-12 col-md-5 d-flex justify-content-center justify-content-md-start'i><'col-12 col-md-7 d-flex justify-content-center justify-content-md-end'p>>",
+            
             "buttons": [
                 {
                     extend: 'excelHtml5',
@@ -245,6 +242,7 @@
                     exportOptions: { columns: ':visible' }
                 }
             ],
+            
             "language": {
                 "lengthMenu": "แสดง _MENU_ รายการ",
                 "search": "🔍 ค้นหา:",
@@ -256,13 +254,11 @@
             }
         });
 
-        // 🌟 ฟังก์ชันกดปุ่ม "กรองข้อมูล" ให้โหลดตารางใหม่ (ไม่ต้องโหลดทั้งหน้าเว็บ)
         $('#filterForm').on('submit', function(e) {
             e.preventDefault();
             table.ajax.reload(); 
         });
 
-        // 🌟 ฟังก์ชันกดปุ่ม "ล้างค่า" ให้เคลียร์ช่องแล้วโหลดตารางใหม่
         $('#btnReset').on('click', function() {
             $('#department').val('');
             $('#position').val('');
