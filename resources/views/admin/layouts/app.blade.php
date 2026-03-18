@@ -109,7 +109,7 @@
                 <a href="{{ route('admin.reports.index') }}" class="{{ request()->routeIs('admin.reports.*') ? 'active' : '' }}"><i class="bi bi-file-earmark-bar-graph me-2"></i> รายงาน (Reports)</a>
                 <a href="{{ route('admin.settings.index') }}" class="{{ request()->routeIs('admin.settings.*') ? 'active' : '' }}"><i class="bi bi-gear me-2"></i> ตั้งค่าระบบ</a>
                 <hr class="border-secondary">
-                <a href="/" class="text-warning"><i class="bi bi-box-arrow-left me-2"></i> กลับหน้าฟอร์มปกติ</a>
+                <a href="{{ route('form.summary') }}" class="text-warning"><i class="bi bi-box-arrow-left me-2"></i> กลับหน้ารายละเอียดการประชุม</a>
             </nav>
         </div>
 
