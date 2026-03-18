@@ -10,9 +10,10 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\MeetingController as AdminMeetingController; 
 use App\Http\Controllers\Admin\SettingController;
-
-// 🌟 เพิ่มบรรทัดนี้เข้ามาครับ เพื่อให้ระบบรู้จัก ReportController
 use App\Http\Controllers\Admin\ReportController;
+
+// 🌟 นำเข้า Controller ใหม่สำหรับ Report แบบแชร์ (ไม่ต้อง Login)
+use App\Http\Controllers\SharedReportController;
 
 
 // ===== (Route ฝั่ง User ปกติของคุณ) =====
@@ -29,10 +30,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
     
     // หน้ารายงาน และ หน้าตั้งค่า
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-    Route::get('/reports/master', [ReportController::class, 'masterSummary'])->name('reports.master'); // 🌟 เพิ่มบรรทัดนี้
+    Route::get('/reports/master', [ReportController::class, 'masterSummary'])->name('reports.master'); 
     Route::get('/reports/pivot', [ReportController::class, 'pivotSummary'])->name('reports.pivot');
     Route::get('/reports/department', [ReportController::class, 'departmentOverview'])->name('reports.department');
+    
+    // 🌟 เพิ่ม Route สำหรับให้ Admin เข้าไปคัดลอก Link ส่งให้หัวหน้าแผนก
+    Route::get('/reports/links', [ReportController::class, 'generateLinks'])->name('reports.links');
+
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
     Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
     
+});
+
+// ===== (Route สำหรับแชร์ให้หัวหน้าแผนกดู โดยไม่ต้อง Login) =====
+// 🌟 บังคับใช้ middleware 'signed' เพื่อป้องกันการปลอมแปลง URL (เปลี่ยนชื่อแผนกเองไม่ได้)
+Route::middleware(['signed'])->prefix('shared-reports/{department}')->name('shared.reports.')->group(function () {
+    Route::get('/', [SharedReportController::class, 'index'])->name('index');
+    Route::get('/master', [SharedReportController::class, 'masterSummary'])->name('master');
+    Route::get('/pivot', [SharedReportController::class, 'pivotSummary'])->name('pivot');
+    Route::get('/department', [SharedReportController::class, 'departmentOverview'])->name('department');
 });

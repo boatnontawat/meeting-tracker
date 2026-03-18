@@ -1,15 +1,14 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\MeetingRecord;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
-class ReportController extends Controller
+class SharedReportController extends Controller
 {
     private function getSettings()
     {
@@ -20,39 +19,37 @@ class ReportController extends Controller
         ];
     }
 
-    private function getFilteredUsersQuery(Request $request)
+    // 🌟 ล็อก Query ให้ดึงเฉพาะ $department จาก URL
+    private function getFilteredUsersQuery($department, Request $request)
     {
-        // 🌟 บังคับดึงเฉพาะคนที่สถานะ 'active' (ตัดคนลาออกทิ้งไปเลย)
-        $query = User::where('status', 'active');
-
-        if ($request->filled('department')) {
-            $query->where('department', $request->department);
-        }
+        $query = User::where('status', 'active')->where('department', $department);
 
         if ($request->filled('position')) {
             $query->where('position', $request->position);
         }
 
-        return $query->orderBy('department');
+        return $query;
     }
 
-    private function getFilterOptions()
+    private function getFilterOptions($department)
     {
-        // 🌟 ดึงตัวเลือกแผนกและตำแหน่งเฉพาะจากคนที่ยังทำงานอยู่
         return [
-            'filterDepartments' => User::where('status', 'active')->whereNotNull('department')->distinct()->orderBy('department')->pluck('department'),
-            'filterPositions' => User::where('status', 'active')->whereNotNull('position')->distinct()->orderBy('position')->pluck('position'),
+            'filterPositions' => User::where('status', 'active')
+                                     ->where('department', $department)
+                                     ->whereNotNull('position')
+                                     ->distinct()
+                                     ->orderBy('position')
+                                     ->pluck('position'),
+            'department' => $department // ส่งชื่อแผนกไปแสดงที่ View
         ];
     }
 
-    // 1. รายงานสรุป 10 วัน (รายบุคคล)
-    public function index(Request $request)
+    public function index($department, Request $request)
     {
         $settings = $this->getSettings();
         $targetHours = $settings['kpi'];
-
-        $options = $this->getFilterOptions();
-        $users = $this->getFilteredUsersQuery($request)->get();
+        $options = $this->getFilterOptions($department);
+        $users = $this->getFilteredUsersQuery($department, $request)->get();
 
         $meetingTotals = MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
             ->selectRaw('user_id, SUM(total_hours) as total_hours')
@@ -72,17 +69,15 @@ class ReportController extends Controller
             });
         }
 
-        return view('admin.reports.index', array_merge(compact('users', 'targetHours'), $options));
+        return view('shared_reports.index', array_merge(compact('users', 'targetHours'), $options));
     }
 
-    // 2. รายงาน Master Summary (สรุปรายแผนก)
-    public function masterSummary(Request $request)
+    public function masterSummary($department, Request $request)
     {
         $settings = $this->getSettings();
         $targetHours = $settings['kpi'];
-
-        $options = $this->getFilterOptions();
-        $users = $this->getFilteredUsersQuery($request)->get();
+        $options = $this->getFilterOptions($department);
+        $users = $this->getFilteredUsersQuery($department, $request)->get();
 
         $meetingTotals = MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
             ->selectRaw('user_id, SUM(total_hours) as total_hours')
@@ -112,11 +107,10 @@ class ReportController extends Controller
             $departments[$user->department]['total_passed'] += $passed;
         }
 
-        return view('admin.reports.master', array_merge(compact('departments', 'targetHours'), $options));
+        return view('shared_reports.master', array_merge(compact('departments', 'targetHours'), $options));
     }
 
-    // 3. รายงาน Sum Pivot (แยกรายเดือน)
-    public function pivotSummary(Request $request)
+    public function pivotSummary($department, Request $request)
     {
         $settings = $this->getSettings();
         $startMonth = $settings['start'];
@@ -132,8 +126,8 @@ class ReportController extends Controller
             $current->addMonth();
         }
 
-        $options = $this->getFilterOptions();
-        $users = $this->getFilteredUsersQuery($request)->get();
+        $options = $this->getFilterOptions($department);
+        $users = $this->getFilteredUsersQuery($department, $request)->get();
         
         $meetingData = MeetingRecord::whereBetween('month_year', [$startMonth, $endMonth])
             ->selectRaw('user_id, month_year, SUM(total_hours) as total')
@@ -165,16 +159,15 @@ class ReportController extends Controller
 
         $filter = ['start' => $startMonth, 'end' => $endMonth];
 
-        return view('admin.reports.pivot', array_merge(compact('users', 'months', 'filter'), $options));
+        return view('shared_reports.pivot', array_merge(compact('users', 'months', 'filter'), $options));
     }
-    // 4. ภาพรวมหน่วยงาน (Department Overview)
-    public function departmentOverview(Request $request)
+
+    public function departmentOverview($department, Request $request)
     {
         $settings = $this->getSettings();
         $targetHours = $settings['kpi'];
-
-        $options = $this->getFilterOptions();
-        $users = $this->getFilteredUsersQuery($request)->get();
+        $options = $this->getFilterOptions($department);
+        $users = $this->getFilteredUsersQuery($department, $request)->get();
 
         $meetingTotals = \App\Models\MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
             ->selectRaw('user_id, SUM(total_hours) as total_hours')
@@ -206,7 +199,6 @@ class ReportController extends Controller
             $departments[$dept]['total_dept_hours'] += $hours;
         }
 
-        // แปลงข้อมูลให้อยู่ในรูปแบบตารางแบนๆ เพื่อให้ DataTables จัดการง่าย
         $flatData = [];
         foreach ($departments as $deptName => $deptInfo) {
             foreach ($deptInfo['positions'] as $posName => $posInfo) {
@@ -220,29 +212,10 @@ class ReportController extends Controller
             }
         }
 
-        // เรียงลำดับตามชื่อแผนก
         usort($flatData, function($a, $b) {
             return strcmp($a['department'], $b['department']);
         });
 
-        return view('admin.reports.department_overview', array_merge(compact('flatData', 'targetHours'), $options));
-    }
-
-    public function generateLinks()
-    {
-        // ดึงชื่อแผนกทั้งหมดที่มีพนักงานทำงานอยู่
-        $departments = User::where('status', 'active')
-            ->whereNotNull('department')
-            ->distinct()
-            ->orderBy('department')
-            ->pluck('department');
-        
-        $links = [];
-        foreach ($departments as $dept) {
-            // สร้าง Signed URL โดยแนบชื่อแผนกไปกับ URL
-            $links[$dept] = \Illuminate\Support\Facades\URL::signedRoute('shared.reports.index', ['department' => $dept]);
-        }
-
-        return view('admin.reports.links', compact('links'));
+        return view('shared_reports.department_overview', array_merge(compact('flatData', 'targetHours'), $options));
     }
 }
