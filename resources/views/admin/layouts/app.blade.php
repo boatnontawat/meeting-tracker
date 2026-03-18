@@ -103,14 +103,17 @@
             </div>
             <hr class="border-secondary">
             <nav class="nav flex-column">
-                <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><i class="bi bi-speedometer2 me-2"></i> หน้าแรก (Dashboard)</a>
-                <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}"><i class="bi bi-people me-2"></i> จัดการ User</a>
-                <a href="{{ route('admin.meetings.index') }}" class="{{ request()->routeIs('admin.meetings.*') ? 'active' : '' }}"><i class="bi bi-calendar-check me-2"></i> จัดการการประชุม</a>
-                <a href="{{ route('admin.reports.index') }}" class="{{ request()->routeIs('admin.reports.*') ? 'active' : '' }}"><i class="bi bi-file-earmark-bar-graph me-2"></i> รายงาน (Reports)</a>
-                <a href="{{ route('admin.settings.index') }}" class="{{ request()->routeIs('admin.settings.*') ? 'active' : '' }}"><i class="bi bi-gear me-2"></i> ตั้งค่าระบบ</a>
-                <hr class="border-secondary">
-                <a href="{{ route('form.summary') }}" class="text-warning"><i class="bi bi-box-arrow-left me-2"></i> กลับหน้ารายละเอียดการประชุม</a>
-            </nav>
+    <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><i class="bi bi-speedometer2 me-2"></i> หน้าแรก (Dashboard)</a>
+    <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}"><i class="bi bi-people me-2"></i> จัดการ User</a>
+    <a href="{{ route('admin.meetings.index') }}" class="{{ request()->routeIs('admin.meetings.*') ? 'active' : '' }}"><i class="bi bi-calendar-check me-2"></i> จัดการการประชุม</a>
+    <a href="{{ route('admin.reports.index') }}" class="{{ request()->routeIs('admin.reports.index', 'admin.reports.master', 'admin.reports.pivot', 'admin.reports.department') ? 'active' : '' }}"><i class="bi bi-file-earmark-bar-graph me-2"></i> รายงาน (Reports)</a>
+    
+    <a href="{{ route('admin.reports.links') }}" class="{{ request()->routeIs('admin.reports.links') ? 'active' : '' }}"><i class="bi bi-share me-2"></i> แจกลิงก์รายงาน</a>
+    
+    <a href="{{ route('admin.settings.index') }}" class="{{ request()->routeIs('admin.settings.*') ? 'active' : '' }}"><i class="bi bi-gear me-2"></i> ตั้งค่าระบบ</a>
+    <hr class="border-secondary">
+    <a href="{{ route('form.summary') }}" class="text-warning"><i class="bi bi-box-arrow-left me-2"></i> กลับหน้ารายละเอียดการประชุม</a>
+</nav>
         </div>
 
         <div class="main-content">
