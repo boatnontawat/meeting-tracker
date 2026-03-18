@@ -6,27 +6,10 @@
 
 <style>
     div.dt-buttons .btn { margin: 2px; }
-    .nav-tabs-scrollable { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; }
-    .nav-tabs-scrollable::-webkit-scrollbar { height: 4px; }
-    .nav-tabs-scrollable::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
     .table-nowrap th, .table-nowrap td { white-space: nowrap; }
 </style>
 
-<div class="container-fluid px-3 px-md-4 mb-5">
-    <ul class="nav nav-tabs nav-tabs-scrollable mb-4 mt-3 border-bottom-2 pb-1">
-        <li class="nav-item">
-            <a class="nav-link text-dark" href="{{ URL::signedRoute('shared.reports.index', ['department' => $department]) }}">รายบุคคล (สรุป 10 วัน)</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link active fw-bold text-primary border-bottom-0 shadow-sm" href="{{ URL::signedRoute('shared.reports.master', ['department' => $department]) }}">Master Summary (รายแผนก)</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link text-dark" href="{{ URL::signedRoute('shared.reports.pivot', ['department' => $department]) }}">Sum Pivot (รายเดือน)</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link text-dark" href="{{ URL::signedRoute('shared.reports.department', ['department' => $department]) }}">ภาพรวมหน่วยงาน</a>
-        </li>
-    </ul>
+<div class="container-fluid px-3 px-md-4 mb-5 mt-4">
 
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-4">
         <div>
