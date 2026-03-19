@@ -42,7 +42,7 @@
 
     <div class="card shadow-sm border-0 mb-4 bg-light">
         <div class="card-body p-3">
-            <form action="{{ request()->url() }}" method="GET" class="row g-2 align-items-end">
+            <form id="filterForm" class="row g-2 align-items-end">
                 <div class="col-12 col-sm-6 col-lg-3">
                     <label class="form-label fw-bold text-muted small"><i class="bi bi-building"></i> หน่วยงาน</label>
                     <select name="department" class="form-select form-select-sm">
@@ -79,7 +79,7 @@
                 </div>
                 <div class="col-12 col-sm-4 col-lg-2 d-flex gap-2">
                     <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-funnel"></i> กรอง</button>
-                    <a href="{{ request()->url() }}" class="btn btn-secondary btn-sm flex-fill">ล้างค่า</a>
+                    <button type="button" class="btn btn-secondary btn-sm flex-fill" onclick="resetForm()">ล้างค่า</button>
                 </div>
             </form>
         </div>
@@ -101,31 +101,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($users as $user)
-                        <tr class="{{ $user->total_hours == 0 ? 'table-danger' : '' }}">
-                            <td class="text-start">{{ $user->department }}</td>
-                            <td class="text-start fw-bold">
-                                {{ $user->name }}
-                                @if($user->status !== 'active')
-                                    <span class="badge bg-danger ms-1" style="font-size: 0.75em;">ลาออก</span>
-                                @endif
-                            </td>
-                            <td>{{ $user->position }}</td>
-                            
-                            @foreach($months as $month)
-                                <td>
-                                    @if($user->monthly_hours[$month] > 0)
-                                        {{ $user->monthly_hours[$month] }}
-                                    @else
-                                        <span class="{{ $user->total_hours == 0 ? 'text-danger' : 'text-muted' }} opacity-50">-</span>
-                                    @endif
-                                </td>
-                            @endforeach
-                            
-                            <td class="text-danger fw-bold fs-6">{{ $user->total_hours }}</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -135,7 +111,6 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -143,44 +118,57 @@
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
 <script>
+    var table;
     $(document).ready(function() {
-        var table = $('#pivotTable').DataTable({
+        table = $('#pivotTable').DataTable({
+            "processing": true,
+            "ajax": {
+                "url": "{{ route('admin.reports.pivot') }}",
+                "type": "GET",
+                "data": function (d) {
+                    d.department = $('select[name="department"]').val();
+                    d.position = $('select[name="position"]').val();
+                    d.status = $('select[name="status"]').val();
+                    d.kpi_status = $('select[name="kpi_status"]').val();
+                }
+            },
+            "columns": [
+                { "data": "department" },
+                { "data": "name" },
+                { "data": "position" },
+                @foreach($months as $month)
+                    { "data": "{{ $month }}" },
+                @endforeach
+                { "data": "total_hours" }
+            ],
             "scrollX": true,
             "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
             "pageLength": 100,
-            
             "dom": "<'row mb-3 align-items-center'<'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start'l><'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center flex-wrap'B><'col-12 col-md-4 d-flex justify-content-center justify-content-md-end'f>>" +
                    "<'row'<'col-sm-12'tr>>" +
                    "<'row mt-3'<'col-12 col-md-5 d-flex justify-content-center justify-content-md-start'i><'col-12 col-md-7 d-flex justify-content-center justify-content-md-end'p>>",
-                   
             "buttons": [
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="bi bi-file-earmark-excel-fill"></i> Excel',
-                    className: 'btn btn-success btn-sm shadow-sm rounded-pill px-3',
-                    title: 'Sum Pivot รายการประชุม',
-                    exportOptions: { columns: ':visible' }
-                },
-                {
-                    extend: 'print',
-                    text: '<i class="bi bi-printer-fill"></i> พิมพ์ / PDF',
-                    className: 'btn btn-danger btn-sm shadow-sm rounded-pill px-3',
-                    title: 'Sum Pivot รายการประชุม',
-                    exportOptions: { columns: ':visible' }
-                }
+                { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel-fill"></i> Excel', className: 'btn btn-success btn-sm shadow-sm rounded-pill px-3', title: 'Sum Pivot รายการประชุม' },
+                { extend: 'print', text: '<i class="bi bi-printer-fill"></i> พิมพ์ / PDF', className: 'btn btn-danger btn-sm shadow-sm rounded-pill px-3', title: 'Sum Pivot รายการประชุม' }
             ],
-            
             "language": {
-                "search": "🔍 ค้นหา:",
-                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
-                "lengthMenu": "แสดง _MENU_ รายการ",
-                "zeroRecords": "ไม่พบข้อมูล",
+                "search": "🔍 ค้นหา:", "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                "lengthMenu": "แสดง _MENU_ รายการ", "zeroRecords": "ไม่พบข้อมูล",
                 "paginate": { "first": "แรกสุด", "last": "ท้ายสุด", "next": "ถัดไป", "previous": "ก่อนหน้า" }
             }
         });
 
-        setTimeout(function(){ table.columns.adjust().draw(); }, 150);
+        $('#filterForm').on('submit', function(e) {
+            e.preventDefault();
+            table.ajax.reload();
+        });
+
         $(window).on('resize', function () { table.columns.adjust(); });
     });
+
+    function resetForm() {
+        $('#filterForm')[0].reset();
+        table.ajax.reload();
+    }
 </script>
 @endsection
