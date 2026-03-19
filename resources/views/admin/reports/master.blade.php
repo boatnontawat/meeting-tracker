@@ -41,7 +41,7 @@
 
     <div class="card shadow-sm border-0 mb-4 bg-light">
         <div class="card-body p-3">
-            <form action="{{ request()->url() }}" method="GET" class="row g-2 align-items-end">
+            <form id="filterForm" class="row g-2 align-items-end">
                 <div class="col-12 col-sm-6 col-lg-3">
                     <label class="form-label fw-bold text-muted small"><i class="bi bi-building"></i> หน่วยงาน</label>
                     <select name="department" class="form-select form-select-sm">
@@ -78,7 +78,7 @@
                 </div>
                 <div class="col-12 col-sm-4 col-lg-2 d-flex gap-2">
                     <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-funnel"></i> กรอง</button>
-                    <a href="{{ request()->url() }}" class="btn btn-secondary btn-sm flex-fill">ล้างค่า</a>
+                    <button type="button" class="btn btn-secondary btn-sm flex-fill" onclick="resetForm()">ล้างค่า</button>
                 </div>
             </form>
         </div>
@@ -98,36 +98,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($departments as $deptName => $deptData)
-                            @foreach($deptData['positions'] as $posName => $posData)
-                            <tr>
-                                <td class="text-start fw-bold">{{ $deptName }}</td>
-                                <td class="text-start">{{ $posName }}</td>
-                                <td>{{ $posData['staff_count'] }}</td>
-                                <td>{{ $posData['passed_count'] }}</td>
-                                <td>
-                                    @if($posData['staff_count'] > 0)
-                                        @php $percent = ($posData['passed_count'] / $posData['staff_count']) * 100; @endphp
-                                        <span class="badge {{ $percent >= 100 ? 'bg-success' : 'bg-secondary' }}">
-                                            {{ number_format($percent, 1) }}%
-                                        </span>
-                                    @else
-                                        0%
-                                    @endif
-                                </td>
-                            </tr>
-                            @endforeach
-                            <tr class="table-secondary fw-bold text-primary">
-                                <td class="text-end">{{ $deptName }}</td>
-                                <td class="text-end">ผลรวม</td>
-                                <td>{{ $deptData['total_staff'] }}</td>
-                                <td>{{ $deptData['total_passed'] }}</td>
-                                <td>
-                                    {{ $deptData['total_staff'] > 0 ? number_format(($deptData['total_passed'] / $deptData['total_staff']) * 100, 1) : 0 }}%
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -137,7 +108,6 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -145,46 +115,56 @@
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
 <script>
+    var table;
     $(document).ready(function() {
-        var table = $('#masterTable').DataTable({
+        table = $('#masterTable').DataTable({
+            "processing": true,
+            "ajax": {
+                "url": "{{ route('admin.reports.master') }}",
+                "type": "GET",
+                "data": function (d) {
+                    d.department = $('select[name="department"]').val();
+                    d.position = $('select[name="position"]').val();
+                    d.status = $('select[name="status"]').val();
+                    d.kpi_status = $('select[name="kpi_status"]').val();
+                }
+            },
+            "columns": [
+                { "data": "department" },
+                { "data": "position" },
+                { "data": "staff_count" },
+                { "data": "passed_count" },
+                { "data": "percent" }
+            ],
             "scrollX": true,
             "ordering": false,
             "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
             "pageLength": -1, 
-            
             "dom": "<'row mb-3 align-items-center'<'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start'l><'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center flex-wrap'B><'col-12 col-md-4 d-flex justify-content-center justify-content-md-end'f>>" +
                    "<'row'<'col-sm-12'tr>>" +
                    "<'row mt-3'<'col-12 col-md-5 d-flex justify-content-center justify-content-md-start'i><'col-12 col-md-7 d-flex justify-content-center justify-content-md-end'p>>",
-                   
             "buttons": [
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="bi bi-file-earmark-excel-fill"></i> Excel',
-                    className: 'btn btn-success btn-sm shadow-sm rounded-pill px-3',
-                    title: 'รายงาน Master Summary',
-                    exportOptions: { columns: ':visible' }
-                },
-                {
-                    extend: 'print',
-                    text: '<i class="bi bi-printer-fill"></i> พิมพ์ / PDF',
-                    className: 'btn btn-danger btn-sm shadow-sm rounded-pill px-3',
-                    title: 'รายงาน Master Summary',
-                    exportOptions: { columns: ':visible' }
-                }
+                { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel-fill"></i> Excel', className: 'btn btn-success btn-sm shadow-sm rounded-pill px-3', title: 'รายงาน Master Summary' },
+                { extend: 'print', text: '<i class="bi bi-printer-fill"></i> พิมพ์ / PDF', className: 'btn btn-danger btn-sm shadow-sm rounded-pill px-3', title: 'รายงาน Master Summary' }
             ],
-            
             "language": {
-                "lengthMenu": "แสดง _MENU_ รายการ",
-                "search": "🔍 ค้นหา:",
-                "zeroRecords": "ไม่พบข้อมูล",
-                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
-                "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
+                "lengthMenu": "แสดง _MENU_ รายการ", "search": "🔍 ค้นหา:", "zeroRecords": "ไม่พบข้อมูล",
+                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ", "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
                 "infoFiltered": "(กรองจาก _MAX_ รายการ)"
             }
         });
-        
-        setTimeout(function(){ table.columns.adjust().draw(); }, 150);
+
+        $('#filterForm').on('submit', function(e) {
+            e.preventDefault();
+            table.ajax.reload();
+        });
+
         $(window).on('resize', function () { table.columns.adjust(); });
     });
+
+    function resetForm() {
+        $('#filterForm')[0].reset();
+        table.ajax.reload();
+    }
 </script>
 @endsection
