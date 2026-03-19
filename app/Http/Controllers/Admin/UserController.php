@@ -9,20 +9,53 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    // 1. หน้าแสดงรายการ User ทั้งหมด
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::orderBy('created_at', 'desc')->get();
-        return view('admin.users.index', compact('users'));
+        // 🌟 ถ้าระบบเรียกข้อมูลผ่าน AJAX (สำหรับ DataTables)
+        if ($request->ajax()) {
+            $users = User::select('id', 'name', 'department', 'position', 'status')
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+            
+            $data = [];
+            foreach ($users as $user) {
+                $statusBadge = $user->status == 'active' 
+                    ? '<span class="badge bg-success px-2 py-1">ปฏิบัติงาน</span>' 
+                    : '<span class="badge bg-secondary px-2 py-1">พ้นสภาพ/ลาออก</span>';
+
+                // สร้างปุ่ม Action
+                $editUrl = route('admin.users.edit', $user->id);
+                $deleteUrl = route('admin.users.destroy', $user->id);
+                $csrf = csrf_field();
+                $method = method_field('DELETE');
+
+                $actionBtns = '
+                    <div class="d-flex justify-content-center gap-1">
+                        <a href="'.$editUrl.'" class="btn btn-sm btn-warning shadow-sm"><i class="bi bi-pencil-square"></i> แก้ไข</a>
+                        <form action="'.$deleteUrl.'" method="POST" class="d-inline" onsubmit="return confirm(\'คุณแน่ใจหรือไม่ที่จะลบผู้ใช้นี้?\');">
+                            '.$csrf.$method.'
+                            <button type="submit" class="btn btn-sm btn-danger shadow-sm"><i class="bi bi-trash"></i> ลบ</button>
+                        </form>
+                    </div>';
+
+                $data[] = [
+                    "DT_RowClass" => "align-middle",
+                    "id" => $user->id,
+                    "name" => '<div class="text-start fw-bold">' . $user->name . '</div>',
+                    "department" => $user->department,
+                    "position" => $user->position,
+                    "status" => $statusBadge,
+                    "action" => $actionBtns
+                ];
+            }
+            return response()->json(['data' => $data]);
+        }
+
+        return view('admin.users.index');
     }
 
-    // 2. หน้าฟอร์มเพิ่ม User ใหม่
-    public function create()
-    {
-        return view('admin.users.form');
-    }
+    public function create() { return view('admin.users.form'); }
 
-    // 3. บันทึก User ใหม่ลงฐานข้อมูล
     public function store(Request $request)
     {
         $request->validate([
@@ -37,20 +70,15 @@ class UserController extends Controller
             'department' => $request->department,
             'position' => $request->position,
             'status' => $request->status,
-            'email' => 'user_' . time() . '@hospital.com', // สุ่มอีเมลให้
-            'password' => Hash::make('12345678') // รหัสผ่านตั้งต้น
+            'email' => 'user_' . time() . '@hospital.com',
+            'password' => Hash::make('12345678')
         ]);
 
         return redirect()->route('admin.users.index')->with('success', 'เพิ่มผู้ใช้งานเรียบร้อยแล้ว!');
     }
 
-    // 4. หน้าฟอร์มแก้ไขข้อมูล User
-    public function edit(User $user)
-    {
-        return view('admin.users.form', compact('user'));
-    }
+    public function edit(User $user) { return view('admin.users.form', compact('user')); }
 
-    // 5. บันทึกการอัปเดตข้อมูล
     public function update(Request $request, User $user)
     {
         $request->validate([
@@ -70,7 +98,6 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'อัปเดตข้อมูลผู้ใช้งานเรียบร้อยแล้ว!');
     }
 
-    // 6. ลบ User
     public function destroy(User $user)
     {
         $user->delete();
