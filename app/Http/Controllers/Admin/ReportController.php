@@ -8,6 +8,7 @@ use App\Models\MeetingRecord;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -20,25 +21,8 @@ class ReportController extends Controller
         ];
     }
 
-    private function getFilteredUsersQuery(Request $request)
-    {
-        // 🌟 บังคับดึงเฉพาะคนที่สถานะ 'active' (ตัดคนลาออกทิ้งไปเลย)
-        $query = User::where('status', 'active');
-
-        if ($request->filled('department')) {
-            $query->where('department', $request->department);
-        }
-
-        if ($request->filled('position')) {
-            $query->where('position', $request->position);
-        }
-
-        return $query->orderBy('department');
-    }
-
     private function getFilterOptions()
     {
-        // 🌟 ดึงตัวเลือกแผนกและตำแหน่งเฉพาะจากคนที่ยังทำงานอยู่
         return [
             'filterDepartments' => User::where('status', 'active')->whereNotNull('department')->distinct()->orderBy('department')->pluck('department'),
             'filterPositions' => User::where('status', 'active')->whereNotNull('position')->distinct()->orderBy('position')->pluck('position'),
@@ -50,29 +34,59 @@ class ReportController extends Controller
     {
         $settings = $this->getSettings();
         $targetHours = $settings['kpi'];
-
         $options = $this->getFilterOptions();
-        $users = $this->getFilteredUsersQuery($request)->get();
 
-        $meetingTotals = MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
-            ->selectRaw('user_id, SUM(total_hours) as total_hours')
-            ->groupBy('user_id')
-            ->pluck('total_hours', 'user_id');
+        if ($request->ajax()) {
+            $query = DB::table('users')->where('status', $request->status ?? 'active');
 
-        foreach ($users as $user) {
-            $hours = $meetingTotals[$user->id] ?? 0;
-            $user->total_hours = $hours;
-            $user->kpi_percentage = min(($hours / $targetHours) * 100, 100); 
-            $user->kpi_passed = $hours >= $targetHours; 
-        }
+            if ($request->filled('department')) $query->where('department', $request->department);
+            if ($request->filled('position')) $query->where('position', $request->position);
 
-        if ($request->filled('kpi_status')) {
-            $users = $users->filter(function ($user) use ($request) {
-                return $request->kpi_status === 'passed' ? $user->kpi_passed : !$user->kpi_passed;
+            $hoursQuery = DB::table('meeting_records')
+                ->select('user_id', DB::raw('SUM(total_hours) as total_hours'))
+                ->whereBetween('month_year', [$settings['start'], $settings['end']])
+                ->groupBy('user_id');
+
+            $query->leftJoinSub($hoursQuery, 'meetings', function ($join) {
+                $join->on('users.id', '=', 'meetings.user_id');
             });
-        }
 
-        return view('admin.reports.index', array_merge(compact('users', 'targetHours'), $options));
+            $query->select('id', 'name', 'department', 'position', 'status', DB::raw('COALESCE(meetings.total_hours, 0) as total_hours'));
+            
+            $users = $query->get();
+            $data = [];
+
+            foreach ($users as $user) {
+                $kpi_percentage = min(($user->total_hours / $targetHours) * 100, 100);
+                $kpi_passed = $user->total_hours >= $targetHours;
+
+                if ($request->filled('kpi_status')) {
+                    if ($request->kpi_status === 'passed' && !$kpi_passed) continue;
+                    if ($request->kpi_status === 'failed' && $kpi_passed) continue;
+                }
+
+                $rowClass = 'table-danger';
+                if ($kpi_percentage >= 100) $rowClass = 'table-success';
+                elseif ($kpi_percentage >= 50) $rowClass = 'table-warning';
+
+                $statusBadge = $user->status !== 'active' ? '<span class="badge bg-danger ms-1" style="font-size: 0.75em;">ลาออก</span>' : '';
+                $kpiBadge = $kpi_passed ? '<span class="badge bg-success px-2 py-1 shadow-sm">✅ ผ่าน</span>' : '<span class="badge bg-danger px-2 py-1 shadow-sm">❌ ไม่ผ่าน</span>';
+                $progressBar = '<div class="progress shadow-sm" style="height: 20px; font-size: 12px; background-color: rgba(255,255,255,0.5);"><div class="progress-bar bg-dark text-white fw-bold" role="progressbar" style="width: '.($kpi_percentage > 100 ? 100 : $kpi_percentage).'%;" aria-valuenow="'.$kpi_percentage.'" aria-valuemin="0" aria-valuemax="100">'.number_format($kpi_percentage, 1).'%</div></div>';
+
+                $data[] = [
+                    "DT_RowClass" => "align-middle " . $rowClass,
+                    "index" => count($data) + 1,
+                    "name" => '<div class="text-start fw-bold">' . $user->name . $statusBadge . '</div>',
+                    "department" => $user->department,
+                    "position" => $user->position,
+                    "total_hours" => '<div class="text-danger fw-bold fs-6">' . number_format($user->total_hours, 1) . '</div>',
+                    "progress" => $progressBar,
+                    "status" => $kpiBadge
+                ];
+            }
+            return response()->json(['data' => $data]);
+        }
+        return view('admin.reports.index', array_merge(compact('targetHours'), $options));
     }
 
     // 2. รายงาน Master Summary (สรุปรายแผนก)
@@ -80,39 +94,77 @@ class ReportController extends Controller
     {
         $settings = $this->getSettings();
         $targetHours = $settings['kpi'];
-
         $options = $this->getFilterOptions();
-        $users = $this->getFilteredUsersQuery($request)->get();
 
-        $meetingTotals = MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
-            ->selectRaw('user_id, SUM(total_hours) as total_hours')
-            ->groupBy('user_id')
-            ->pluck('total_hours', 'user_id');
+        if ($request->ajax()) {
+            $query = DB::table('users')->where('status', $request->status ?? 'active');
+            if ($request->filled('department')) $query->where('department', $request->department);
+            if ($request->filled('position')) $query->where('position', $request->position);
 
-        $departments = [];
-        foreach ($users as $user) {
-            $hours = $meetingTotals[$user->id] ?? 0;
-            $passed = $hours >= $targetHours ? 1 : 0;
-            
-            if ($request->filled('kpi_status')) {
-                if ($request->kpi_status === 'passed' && !$passed) continue;
-                if ($request->kpi_status === 'failed' && $passed) continue;
+            $hoursQuery = DB::table('meeting_records')
+                ->select('user_id', DB::raw('SUM(total_hours) as total_hours'))
+                ->whereBetween('month_year', [$settings['start'], $settings['end']])
+                ->groupBy('user_id');
+
+            $query->leftJoinSub($hoursQuery, 'meetings', function ($join) {
+                $join->on('users.id', '=', 'meetings.user_id');
+            });
+            $query->select('department', 'position', DB::raw('COALESCE(meetings.total_hours, 0) as total_hours'));
+
+            $users = $query->get();
+            $departments = [];
+
+            foreach ($users as $user) {
+                $passed = $user->total_hours >= $targetHours ? 1 : 0;
+                
+                if ($request->filled('kpi_status')) {
+                    if ($request->kpi_status === 'passed' && !$passed) continue;
+                    if ($request->kpi_status === 'failed' && $passed) continue;
+                }
+
+                $dept = $user->department ?? 'ไม่ระบุ';
+                $pos = $user->position ?? 'ไม่ระบุ';
+
+                if (!isset($departments[$dept])) {
+                    $departments[$dept] = ['positions' => [], 'total_staff' => 0, 'total_passed' => 0];
+                }
+                if (!isset($departments[$dept]['positions'][$pos])) {
+                    $departments[$dept]['positions'][$pos] = ['staff_count' => 0, 'passed_count' => 0];
+                }
+
+                $departments[$dept]['positions'][$pos]['staff_count'] += 1;
+                $departments[$dept]['positions'][$pos]['passed_count'] += $passed;
+                $departments[$dept]['total_staff'] += 1;
+                $departments[$dept]['total_passed'] += $passed;
             }
 
-            if (!isset($departments[$user->department])) {
-                $departments[$user->department] = ['positions' => [], 'total_staff' => 0, 'total_passed' => 0];
+            $data = [];
+            foreach ($departments as $deptName => $deptData) {
+                foreach ($deptData['positions'] as $posName => $posData) {
+                    $percent = $posData['staff_count'] > 0 ? ($posData['passed_count'] / $posData['staff_count']) * 100 : 0;
+                    $badgeClass = $percent >= 100 ? 'bg-success' : 'bg-secondary';
+                    
+                    $data[] = [
+                        "department" => '<div class="text-start fw-bold">' . $deptName . '</div>',
+                        "position" => '<div class="text-start">' . $posName . '</div>',
+                        "staff_count" => $posData['staff_count'],
+                        "passed_count" => $posData['passed_count'],
+                        "percent" => '<span class="badge ' . $badgeClass . '">' . number_format($percent, 1) . '%</span>'
+                    ];
+                }
+                $totalPercent = $deptData['total_staff'] > 0 ? ($deptData['total_passed'] / $deptData['total_staff']) * 100 : 0;
+                $data[] = [
+                    "DT_RowClass" => "table-secondary fw-bold text-primary",
+                    "department" => '<div class="text-end">' . $deptName . '</div>',
+                    "position" => '<div class="text-end">ผลรวม</div>',
+                    "staff_count" => $deptData['total_staff'],
+                    "passed_count" => $deptData['total_passed'],
+                    "percent" => number_format($totalPercent, 1) . '%'
+                ];
             }
-            if (!isset($departments[$user->department]['positions'][$user->position])) {
-                $departments[$user->department]['positions'][$user->position] = ['staff_count' => 0, 'passed_count' => 0];
-            }
-
-            $departments[$user->department]['positions'][$user->position]['staff_count'] += 1;
-            $departments[$user->department]['positions'][$user->position]['passed_count'] += $passed;
-            $departments[$user->department]['total_staff'] += 1;
-            $departments[$user->department]['total_passed'] += $passed;
+            return response()->json(['data' => $data]);
         }
-
-        return view('admin.reports.master', array_merge(compact('departments', 'targetHours'), $options));
+        return view('admin.reports.master', array_merge(compact('targetHours'), $options));
     }
 
     // 3. รายงาน Sum Pivot (แยกรายเดือน)
@@ -126,111 +178,132 @@ class ReportController extends Controller
         $months = [];
         $current = Carbon::parse($startMonth)->startOfMonth();
         $end = Carbon::parse($endMonth)->startOfMonth();
-
         while ($current->lte($end)) {
             $months[] = $current->format('Y-m');
             $current->addMonth();
         }
 
         $options = $this->getFilterOptions();
-        $users = $this->getFilteredUsersQuery($request)->get();
-        
-        $meetingData = MeetingRecord::whereBetween('month_year', [$startMonth, $endMonth])
-            ->selectRaw('user_id, month_year, SUM(total_hours) as total')
-            ->groupBy('user_id', 'month_year')
-            ->get();
 
-        $userMonths = [];
-        $userTotals = [];
-        foreach ($meetingData as $data) {
-            $userMonths[$data->user_id][$data->month_year] = $data->total;
-            $userTotals[$data->user_id] = ($userTotals[$data->user_id] ?? 0) + $data->total;
-        }
+        if ($request->ajax()) {
+            $query = DB::table('users')->where('status', $request->status ?? 'active');
+            if ($request->filled('department')) $query->where('department', $request->department);
+            if ($request->filled('position')) $query->where('position', $request->position);
+            $query->select('id', 'name', 'department', 'position', 'status');
+            
+            $users = $query->get();
+            $userIds = $users->pluck('id')->toArray();
 
-        foreach ($users as $user) {
-            $user->total_hours = $userTotals[$user->id] ?? 0;
-            $temp_monthly_hours = [];
-            foreach ($months as $month) {
-                $temp_monthly_hours[$month] = $userMonths[$user->id][$month] ?? 0;
+            $meetingData = DB::table('meeting_records')
+                ->select('user_id', 'month_year', DB::raw('SUM(total_hours) as total'))
+                ->whereIn('user_id', $userIds)
+                ->whereBetween('month_year', [$startMonth, $endMonth])
+                ->groupBy('user_id', 'month_year')
+                ->get();
+
+            $userMonths = [];
+            $userTotals = [];
+            foreach ($meetingData as $data) {
+                $userMonths[$data->user_id][$data->month_year] = $data->total;
+                $userTotals[$data->user_id] = ($userTotals[$data->user_id] ?? 0) + $data->total;
             }
-            $user->monthly_hours = $temp_monthly_hours;
-            $user->kpi_passed = $user->total_hours >= $targetHours;
-        }
 
-        if ($request->filled('kpi_status')) {
-            $users = $users->filter(function ($user) use ($request) {
-                return $request->kpi_status === 'passed' ? $user->kpi_passed : !$user->kpi_passed;
-            });
+            $data = [];
+            foreach ($users as $user) {
+                $total_hours = $userTotals[$user->id] ?? 0;
+                $kpi_passed = $total_hours >= $targetHours;
+
+                if ($request->filled('kpi_status')) {
+                    if ($request->kpi_status === 'passed' && !$kpi_passed) continue;
+                    if ($request->kpi_status === 'failed' && $kpi_passed) continue;
+                }
+
+                $statusBadge = $user->status !== 'active' ? '<span class="badge bg-danger ms-1" style="font-size: 0.75em;">ลาออก</span>' : '';
+                
+                $row = [
+                    "DT_RowClass" => $total_hours == 0 ? 'table-danger' : '',
+                    "department" => '<div class="text-start">' . $user->department . '</div>',
+                    "name" => '<div class="text-start fw-bold">' . $user->name . $statusBadge . '</div>',
+                    "position" => $user->position,
+                ];
+
+                foreach ($months as $month) {
+                    $val = $userMonths[$user->id][$month] ?? 0;
+                    $row[$month] = $val > 0 ? $val : '<span class="'.($total_hours == 0 ? 'text-danger' : 'text-muted').' opacity-50">-</span>';
+                }
+
+                $row['total_hours'] = '<div class="text-danger fw-bold fs-6">' . $total_hours . '</div>';
+                $data[] = $row;
+            }
+            return response()->json(['data' => $data]);
         }
 
         $filter = ['start' => $startMonth, 'end' => $endMonth];
-
-        return view('admin.reports.pivot', array_merge(compact('users', 'months', 'filter'), $options));
+        return view('admin.reports.pivot', array_merge(compact('months', 'filter'), $options));
     }
+
     // 4. ภาพรวมหน่วยงาน (Department Overview)
     public function departmentOverview(Request $request)
     {
         $settings = $this->getSettings();
         $targetHours = $settings['kpi'];
-
         $options = $this->getFilterOptions();
-        $users = $this->getFilteredUsersQuery($request)->get();
 
-        $meetingTotals = \App\Models\MeetingRecord::whereBetween('month_year', [$settings['start'], $settings['end']])
-            ->selectRaw('user_id, SUM(total_hours) as total_hours')
-            ->groupBy('user_id')
-            ->pluck('total_hours', 'user_id');
+        if ($request->ajax()) {
+            $query = DB::table('users')->where('status', 'active');
+            if ($request->filled('department')) $query->where('department', $request->department);
 
-        $departments = [];
-        foreach ($users as $user) {
-            $hours = $meetingTotals[$user->id] ?? 0;
-            $dept = $user->department ?? 'ไม่ระบุ';
-            $pos = $user->position ?? 'ไม่ระบุ';
+            $hoursQuery = DB::table('meeting_records')
+                ->select('user_id', DB::raw('SUM(total_hours) as total_hours'))
+                ->whereBetween('month_year', [$settings['start'], $settings['end']])
+                ->groupBy('user_id');
 
-            if (!isset($departments[$dept])) {
-                $departments[$dept] = [
-                    'total_dept_hours' => 0,
-                    'positions' => []
-                ];
+            $query->leftJoinSub($hoursQuery, 'meetings', function ($join) {
+                $join->on('users.id', '=', 'meetings.user_id');
+            });
+            $query->select('department', 'position', DB::raw('COALESCE(meetings.total_hours, 0) as total_hours'));
+
+            $users = $query->get();
+            $departments = [];
+
+            foreach ($users as $user) {
+                $dept = $user->department ?? 'ไม่ระบุ';
+                $pos = $user->position ?? 'ไม่ระบุ';
+
+                if (!isset($departments[$dept])) {
+                    $departments[$dept] = ['total_dept_hours' => 0, 'positions' => []];
+                }
+                if (!isset($departments[$dept]['positions'][$pos])) {
+                    $departments[$dept]['positions'][$pos] = ['staff_count' => 0, 'total_pos_hours' => 0];
+                }
+
+                $departments[$dept]['positions'][$pos]['staff_count'] += 1;
+                $departments[$dept]['positions'][$pos]['total_pos_hours'] += $user->total_hours;
+                $departments[$dept]['total_dept_hours'] += $user->total_hours;
             }
 
-            if (!isset($departments[$dept]['positions'][$pos])) {
-                $departments[$dept]['positions'][$pos] = [
-                    'staff_count' => 0,
-                    'total_pos_hours' => 0
-                ];
+            $data = [];
+            $index = 1;
+            ksort($departments); 
+            foreach ($departments as $deptName => $deptInfo) {
+                foreach ($deptInfo['positions'] as $posName => $posInfo) {
+                    $data[] = [
+                        "index" => $index++,
+                        "department" => $deptName,
+                        "position" => '<div class="text-start ps-4"><i class="bi bi-person-badge text-muted me-2"></i> ' . $posName . '</div>',
+                        "staff_count" => '<div class="fw-bold">' . $posInfo['staff_count'] . '</div>',
+                        "total_pos_hours" => '<div class="text-primary fw-bold fs-6">' . number_format($posInfo['total_pos_hours'], 1) . '</div>',
+                        "total_dept_hours" => number_format($deptInfo['total_dept_hours'], 1) 
+                    ];
+                }
             }
-
-            $departments[$dept]['positions'][$pos]['staff_count'] += 1;
-            $departments[$dept]['positions'][$pos]['total_pos_hours'] += $hours;
-            $departments[$dept]['total_dept_hours'] += $hours;
+            return response()->json(['data' => $data]);
         }
-
-        // แปลงข้อมูลให้อยู่ในรูปแบบตารางแบนๆ เพื่อให้ DataTables จัดการง่าย
-        $flatData = [];
-        foreach ($departments as $deptName => $deptInfo) {
-            foreach ($deptInfo['positions'] as $posName => $posInfo) {
-                $flatData[] = [
-                    'department' => $deptName,
-                    'position' => $posName,
-                    'staff_count' => $posInfo['staff_count'],
-                    'total_pos_hours' => $posInfo['total_pos_hours'],
-                    'total_dept_hours' => $deptInfo['total_dept_hours'],
-                ];
-            }
-        }
-
-        // เรียงลำดับตามชื่อแผนก
-        usort($flatData, function($a, $b) {
-            return strcmp($a['department'], $b['department']);
-        });
-
-        return view('admin.reports.department_overview', array_merge(compact('flatData', 'targetHours'), $options));
+        return view('admin.reports.department_overview', array_merge(compact('targetHours'), $options));
     }
 
     public function generateLinks()
     {
-        // ดึงชื่อแผนกทั้งหมดที่มีพนักงานทำงานอยู่
         $departments = User::where('status', 'active')
             ->whereNotNull('department')
             ->distinct()
@@ -239,7 +312,6 @@ class ReportController extends Controller
         
         $links = [];
         foreach ($departments as $dept) {
-            // สร้าง Signed URL โดยแนบชื่อแผนกไปกับ URL
             $links[$dept] = \Illuminate\Support\Facades\URL::signedRoute('shared.reports.index', ['department' => $dept]);
         }
 
