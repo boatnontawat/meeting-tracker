@@ -5,7 +5,6 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
 
 <style>
-    /* ป้องกันตารางล้นจอและบังคับการตัดคำ */
     .table-nowrap th, .table-nowrap td { white-space: nowrap; vertical-align: middle; }
     .topic-cell {
         white-space: normal !important; 
@@ -46,35 +45,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($meetings as $meeting)
-                        <tr>
-                            <td class="text-center">{{ $meeting->id }}</td>
-                            <td class="fw-bold">{{ $meeting->user->name ?? 'ไม่พบผู้ใช้' }}</td>
-                            <td class="topic-cell">{{ $meeting->topic }}</td>
-                            
-                            <td class="text-center">{{ \Carbon\Carbon::parse($meeting->start_time)->format('d/m/Y') }}</td>
-                            <td class="text-center">{{ \Carbon\Carbon::parse($meeting->end_time)->format('d/m/Y') }}</td>
-                            
-                            <td class="text-center text-danger fw-bold">
-                                @php
-                                    $val = floatval($meeting->total_hours);
-                                @endphp
-                                
-                                {{ $val == floor($val) ? $val . ' ชม.' : number_format($val, 1) . ' ชม.' }}
-                            </td>
-                            
-                            <td class="text-center">{{ $meeting->month_year }}</td>
-                            <td class="text-center">
-                                <a href="{{ route('admin.meetings.edit', $meeting->id) }}" class="btn btn-sm btn-warning shadow-sm"><i class="bi bi-pencil-square"></i></a>
-                                <form action="{{ route('admin.meetings.destroy', $meeting->id) }}" method="POST" class="d-inline" onsubmit="return confirm('ลบข้อมูลการประชุมนี้ ใช่หรือไม่?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger shadow-sm"><i class="bi bi-trash"></i></button>
-                                </form>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -94,12 +65,25 @@
 <script>
     $(document).ready(function() {
         var table = $('#adminMeetingsTable').DataTable({
+            "processing": true,
+            "ajax": {
+                "url": "{{ route('admin.meetings.index') }}",
+                "type": "GET"
+            },
+            "columns": [
+                { "data": "id" },
+                { "data": "user_name" },
+                { "data": "topic" },
+                { "data": "start_time" },
+                { "data": "end_time" },
+                { "data": "total_hours" },
+                { "data": "month_year" },
+                { "data": "action", "orderable": false, "searchable": false }
+            ],
             "scrollX": true,
-            "lengthMenu": [ [10, 25, 50, 100, -1], [10, 25, 50, 100, "All"] ],
+            "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
             "pageLength": 100,
-            "order": [[ 0, "desc" ]],
             
-            // ปรับ Layout ให้เรียงซ้อนกันบนจอมือถือ
             "dom": "<'row mb-3 align-items-center'<'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start'l><'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center flex-wrap'B><'col-12 col-md-4 d-flex justify-content-center justify-content-md-end'f>>" +
                    "<'row'<'col-sm-12'tr>>" +
                    "<'row mt-3'<'col-12 col-md-5 d-flex justify-content-center justify-content-md-start'i><'col-12 col-md-7 d-flex justify-content-center justify-content-md-end'p>>",
@@ -130,7 +114,6 @@
             }
         });
 
-        // บังคับคำนวณขนาดตารางใหม่เมื่อ Resize (แก้บัคสเกลเพี้ยนเวลาหมุนมือถือ)
         setTimeout(function(){ table.columns.adjust().draw(); }, 150);
         $(window).on('resize', function () { table.columns.adjust(); });
     });
