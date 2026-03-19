@@ -4,7 +4,6 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 
 <style>
-    /* ป้องกันข้อความในตารางตัดขึ้นบรรทัดใหม่ */
     .table-nowrap th, .table-nowrap td { white-space: nowrap; vertical-align: middle; }
 </style>
 
@@ -39,40 +38,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($users as $user)
-                        <tr class="align-middle">
-                            <td>{{ $user->id }}</td>
-                            <td class="text-start fw-bold">{{ $user->name }}</td>
-                            <td>{{ $user->department }}</td>
-                            <td>{{ $user->position }}</td>
-                            <td>
-                                @if($user->status == 'active')
-                                    <span class="badge bg-success px-2 py-1">ปฏิบัติงาน</span>
-                                @else
-                                    <span class="badge bg-secondary px-2 py-1">พ้นสภาพ/ลาออก</span>
-                                @endif
-                            </td>
-                            <td>
-                                <div class="d-flex justify-content-center gap-1">
-                                    <a href="{{ route('admin.users.edit', $user->id) }}" class="btn btn-sm btn-warning shadow-sm">
-                                        <i class="bi bi-pencil-square"></i> แก้ไข
-                                    </a>
-                                    <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" class="d-inline" onsubmit="return confirm('คุณแน่ใจหรือไม่ที่จะลบผู้ใช้นี้?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-danger shadow-sm">
-                                            <i class="bi bi-trash"></i> ลบ
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">ยังไม่มีข้อมูลผู้ใช้งาน</td>
-                        </tr>
-                        @endforelse
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -86,11 +52,23 @@
 <script>
     $(document).ready(function() {
         var table = $('#usersTable').DataTable({
-            "scrollX": true, // เปิดการเลื่อนแนวนอนบนมือถือ
-            "lengthMenu": [ [10, 25, 50, 100, -1], [10, 25, 50, 100, "All"] ],
+            "processing": true,
+            "ajax": {
+                "url": "{{ route('admin.users.index') }}",
+                "type": "GET"
+            },
+            "columns": [
+                { "data": "id" },
+                { "data": "name" },
+                { "data": "department" },
+                { "data": "position" },
+                { "data": "status" },
+                { "data": "action", "orderable": false, "searchable": false }
+            ],
+            "scrollX": true, 
+            "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
             "pageLength": 100,
             
-            // ปรับ Layout ของตัวควบคุม DataTables ให้รองรับมือถือ
             "dom": "<'row mb-3 align-items-center'<'col-12 col-md-6 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start'l><'col-12 col-md-6 d-flex justify-content-center justify-content-md-end'f>>" +
                    "<'row'<'col-sm-12'tr>>" +
                    "<'row mt-3'<'col-12 col-md-5 d-flex justify-content-center justify-content-md-start'i><'col-12 col-md-7 d-flex justify-content-center justify-content-md-end'p>>",
@@ -102,16 +80,10 @@
                 "info": "แสดงรายการที่ _START_ ถึง _END_ จากทั้งหมด _TOTAL_ รายการ",
                 "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
                 "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
-                "paginate": {
-                    "first": "หน้าแรก",
-                    "last": "หน้าสุดท้าย",
-                    "next": "ถัดไป",
-                    "previous": "ก่อนหน้า"
-                }
+                "paginate": { "first": "หน้าแรก", "last": "หน้าสุดท้าย", "next": "ถัดไป", "previous": "ก่อนหน้า" }
             }
         });
 
-        // บังคับให้คำนวณขนาดคอลัมน์ใหม่หลังจากโหลดตารางเสร็จ หรือเมื่อมีการหมุนหน้าจอ
         setTimeout(function(){ table.columns.adjust().draw(); }, 150);
         $(window).on('resize', function () { table.columns.adjust(); });
     });
