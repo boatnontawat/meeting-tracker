@@ -10,9 +10,8 @@
     .nav-tabs-scrollable::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
     .table-nowrap th, .table-nowrap td { white-space: nowrap; vertical-align: middle; }
     
-    /* 🌟 สไตล์สำหรับแถวที่เป็นหัวข้อกลุ่ม (ชื่อแผนก) */
     tr.group, tr.group:hover {
-        background-color: #e0f2fe !important; /* สีฟ้าอ่อนสบายตา */
+        background-color: #e0f2fe !important; 
         border-bottom: 2px solid #bae6fd;
     }
 </style>
@@ -47,7 +46,7 @@
 
     <div class="card shadow-sm border-0 mb-4 bg-light">
         <div class="card-body p-3">
-            <form action="{{ request()->url() }}" method="GET" class="row g-2 align-items-end">
+            <form id="filterForm" class="row g-2 align-items-end">
                 <div class="col-12 col-sm-6 col-lg-4">
                     <label class="form-label fw-bold text-muted small"><i class="bi bi-building"></i> หน่วยงาน</label>
                     <select name="department" class="form-select form-select-sm">
@@ -59,7 +58,7 @@
                 </div>
                 <div class="col-12 col-sm-6 col-lg-4 d-flex gap-2">
                     <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-funnel"></i> กรอง</button>
-                    <a href="{{ request()->url() }}" class="btn btn-secondary btn-sm flex-fill">ล้างค่า</a>
+                    <button type="button" class="btn btn-secondary btn-sm flex-fill" onclick="resetForm()">ล้างค่า</button>
                 </div>
             </form>
         </div>
@@ -72,21 +71,15 @@
                     <thead class="table-dark align-middle">
                         <tr>
                             <th width="10%">ลำดับ</th>
-                            <th>แผนก</th> <th width="40%">ตำแหน่ง</th>
+                            <th>แผนก</th> 
+                            <th width="40%">ตำแหน่ง</th>
                             <th width="25%" class="bg-secondary text-white">คนทั้งหมด</th>
                             <th width="25%" class="bg-primary text-white">ชั่วโมงรวมของตำแหน่ง</th>
-                            <th>รวมชั่วโมงแผนก</th> </tr>
+                            <th>รวมชั่วโมงแผนก</th> 
+                        </tr>
                     </thead>
                     <tbody>
-                        @foreach($flatData as $index => $row)
-                        <tr class="align-middle">
-                            <td>{{ $index + 1 }}</td>
-                            <td>{{ $row['department'] }}</td> <td class="text-start ps-4"><i class="bi bi-person-badge text-muted me-2"></i> {{ $row['position'] }}</td>
-                            <td class="fw-bold">{{ $row['staff_count'] }}</td>
-                            <td class="text-primary fw-bold fs-6">{{ number_format($row['total_pos_hours'], 1) }}</td>
-                            <td>{{ number_format($row['total_dept_hours'], 1) }}</td> </tr>
-                        @endforeach
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -103,52 +96,44 @@
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
 <script>
+    var table;
     $(document).ready(function() {
-        var table = $('#deptOverviewTable').DataTable({
+        table = $('#deptOverviewTable').DataTable({
+            "processing": true,
+            "ajax": {
+                "url": "{{ route('admin.reports.department') }}",
+                "type": "GET",
+                "data": function (d) {
+                    d.department = $('select[name="department"]').val();
+                }
+            },
+            "columns": [
+                { "data": "index" },
+                { "data": "department" },
+                { "data": "position" },
+                { "data": "staff_count" },
+                { "data": "total_pos_hours" },
+                { "data": "total_dept_hours" }
+            ],
             "scrollX": true,
             "lengthMenu": [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
             "pageLength": 100,
-            
-            // 🌟 1. ซ่อนคอลัมน์ แผนก (1) และ รวมชั่วโมงแผนก (5) ไม่ให้เกะกะ
             "columnDefs": [
                 { "visible": false, "targets": [1, 5] }
             ],
-            // 🌟 2. ล็อกให้เรียงลำดับตามชื่อแผนกเป็นหลัก เพื่อให้ระบบจัดกลุ่มทำงานได้สมบูรณ์
             "order": [[ 1, 'asc' ]],
-
             "dom": "<'row mb-3 align-items-center'<'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center justify-content-md-start'l><'col-12 col-md-4 mb-2 mb-md-0 d-flex justify-content-center flex-wrap'B><'col-12 col-md-4 d-flex justify-content-center justify-content-md-end'f>>" +
                    "<'row'<'col-sm-12'tr>>" +
                    "<'row mt-3'<'col-12 col-md-5 d-flex justify-content-center justify-content-md-start'i><'col-12 col-md-7 d-flex justify-content-center justify-content-md-end'p>>",
-                   
             "buttons": [
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="bi bi-file-earmark-excel-fill"></i> Excel',
-                    className: 'btn btn-success btn-sm shadow-sm rounded-pill px-3',
-                    title: 'รายงานภาพรวมหน่วยงาน',
-                    // Export ข้อมูลไป Excel ให้ครบทุกคอลัมน์ (รวมคอลัมน์ที่ซ่อนไว้ด้วย)
-                    exportOptions: { columns: [0, 1, 2, 3, 4, 5] } 
-                },
-                {
-                    extend: 'print',
-                    text: '<i class="bi bi-printer-fill"></i> พิมพ์ / PDF',
-                    className: 'btn btn-danger btn-sm shadow-sm rounded-pill px-3',
-                    title: 'รายงานภาพรวมหน่วยงาน',
-                    exportOptions: { columns: [0, 1, 2, 3, 4, 5] } 
-                }
+                { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel-fill"></i> Excel', className: 'btn btn-success btn-sm shadow-sm rounded-pill px-3', title: 'รายงานภาพรวมหน่วยงาน', exportOptions: { columns: [0, 1, 2, 3, 4, 5] } },
+                { extend: 'print', text: '<i class="bi bi-printer-fill"></i> พิมพ์ / PDF', className: 'btn btn-danger btn-sm shadow-sm rounded-pill px-3', title: 'รายงานภาพรวมหน่วยงาน', exportOptions: { columns: [0, 1, 2, 3, 4, 5] } }
             ],
-            
             "language": {
-                "lengthMenu": "แสดง _MENU_ รายการ",
-                "search": "🔍 ค้นหา:",
-                "zeroRecords": "ไม่พบข้อมูล",
-                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
-                "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
-                "infoFiltered": "(กรองจาก _MAX_ รายการ)",
-                "paginate": { "first": "แรกสุด", "last": "ท้ายสุด", "next": "ถัดไป", "previous": "ก่อนหน้า" }
+                "lengthMenu": "แสดง _MENU_ รายการ", "search": "🔍 ค้นหา:", "zeroRecords": "ไม่พบข้อมูล",
+                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ", "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
+                "infoFiltered": "(กรองจาก _MAX_ รายการ)", "paginate": { "first": "แรกสุด", "last": "ท้ายสุด", "next": "ถัดไป", "previous": "ก่อนหน้า" }
             },
-
-            // 🌟 3. ระบบสร้างแถว "จำแนกแผนก" คั่นให้อัตโนมัติ (Group Row)
             "drawCallback": function (settings) {
                 var api = this.api();
                 var rows = api.rows({page:'current'}).nodes();
@@ -156,23 +141,25 @@
 
                 api.column(1, {page:'current'}).data().each(function (group, i) {
                     if (last !== group) {
-                        var totalHours = api.cell(i, 5).data(); // ดึงชั่วโมงรวมแผนกมาโชว์
-                        
+                        var totalHours = api.cell(i, 5).data(); 
                         $(rows).eq(i).before(
-                            '<tr class="group">' +
-                                '<td colspan="4" class="text-start py-3">' +
-                                    '<div class="d-flex justify-content-between align-items-center">' +
-                                        '<span class="fw-bold fs-5 text-dark"><i class="bi bi-building-fill text-primary me-2"></i> แผนก: <span class="text-primary">' + group + '</span></span>' +
-                                        '<span class="badge bg-success fs-6 shadow-sm px-3 py-2"><i class="bi bi-clock-history me-1"></i> รวมทั้งแผนก: ' + totalHours + ' ชม.</span>' +
-                                    '</div>' +
-                                '</td>' +
-                            '</tr>'
+                            '<tr class="group"><td colspan="4" class="text-start py-3"><div class="d-flex justify-content-between align-items-center"><span class="fw-bold fs-5 text-dark"><i class="bi bi-building-fill text-primary me-2"></i> แผนก: <span class="text-primary">' + group + '</span></span><span class="badge bg-success fs-6 shadow-sm px-3 py-2"><i class="bi bi-clock-history me-1"></i> รวมทั้งแผนก: ' + totalHours + ' ชม.</span></div></td></tr>'
                         );
                         last = group;
                     }
                 });
             }
         });
+
+        $('#filterForm').on('submit', function(e) {
+            e.preventDefault();
+            table.ajax.reload();
+        });
     });
+
+    function resetForm() {
+        $('#filterForm')[0].reset();
+        table.ajax.reload();
+    }
 </script>
 @endsection
